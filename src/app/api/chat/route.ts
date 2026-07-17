@@ -61,7 +61,13 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = STADIUM_SYSTEM_PROMPT + langInstruction + contextBlock;
 
-    const response = await generateChat(historyMessages, sanitized, systemPrompt);
+    let response: string;
+    try {
+      response = await generateChat(historyMessages, sanitized, systemPrompt);
+    } catch (error) {
+      console.warn('Gemini unavailable for chat, using fallback:', error);
+      response = `I'd love to help you with that! Unfortunately, the AI assistant is temporarily unavailable (missing API configuration). Here's some general info:\n\n• For navigation, try the Navigation tab for interactive maps\n• For transport, check the Transport tab for metro/bus schedules\n• For emergencies, use the Emergency tab or call 911\n• For accessibility needs, check the Accessibility tab\n\nPlease try again later when the AI service is fully configured.`;
+    }
 
     let metadata = {};
     if (contextSources.length > 0) {

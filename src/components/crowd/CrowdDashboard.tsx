@@ -25,20 +25,23 @@ const DENSITY_BADGE: Record<string, 'success' | 'warning' | 'danger' | 'default'
 export function CrowdDashboard() {
   const [data, setData] = useState<CrowdData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [matchProgress, setMatchProgress] = useState(0.5);
 
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/crowd?progress=${matchProgress}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error(err); setFetchError('Failed to load crowd data'); }
     finally { setLoading(false); }
   }, [matchProgress]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   if (loading) return <CardContent className="flex justify-center py-12"><LoadingSpinner /></CardContent>;
+  if (fetchError) return <CardContent className="py-8 text-center"><p className="text-fifa-red">{fetchError}</p></CardContent>;
   if (!data) return null;
 
   return (

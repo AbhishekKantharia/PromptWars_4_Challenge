@@ -53,7 +53,13 @@ export async function POST(request: NextRequest) {
       if (!question || question.trim().length === 0) {
         return NextResponse.json({ error: 'Please provide a question' }, { status: 400 });
       }
-      const answer = await generateText(question, VOLUNTEER_KB_PROMPT);
+      let answer: string;
+      try {
+        answer = await generateText(question, VOLUNTEER_KB_PROMPT);
+      } catch (error) {
+        console.warn('Gemini unavailable for volunteer KB, using fallback:', error);
+        answer = 'I can help with general volunteer information. Common tasks include ushering, food court monitoring, accessibility guiding, and first aid support. For specific questions, please contact your shift supervisor.';
+      }
       return NextResponse.json({ answer });
     }
 

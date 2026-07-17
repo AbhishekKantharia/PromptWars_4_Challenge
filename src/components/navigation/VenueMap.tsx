@@ -10,6 +10,11 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAccessibility } from '@/contexts/AccessibilityContext';
 import type { NavigationRoute } from '@/types/navigation';
 
+interface RouteInstruction {
+  step: number;
+  text: string;
+}
+
 const DESTINATIONS = [
   { id: 'gate', label: 'Gate', icon: '🚪' },
   { id: 'restroom', label: 'Restroom', icon: '🚻' },
@@ -146,7 +151,7 @@ export function VenueMap() {
             </div>
             {route.instructions && (
               <ol className="space-y-2">
-                {(route.instructions as unknown as { step: number; text: string }[]).map((inst) => (
+                {(route.instructions as unknown as RouteInstruction[]).map((inst) => (
                   <li key={inst.step} className="flex items-start gap-3 text-sm">
                     <span className="h-6 w-6 rounded-full bg-fifa-accent/20 text-fifa-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
                       {inst.step}

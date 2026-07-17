@@ -20,15 +20,20 @@ export function TransportAssistant() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'metro' | 'bus' | 'parking'>('metro');
   const [aiRec, setAiRec] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/transport')
-      .then((r) => r.json())
-      .then((d) => { setData(d.transport); setAiRec(d.recommendation); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => { setData(d.transport); setAiRec(d.recommendation || ''); setLoading(false); })
+      .catch((err) => { console.error(err); setFetchError('Failed to load transport data'); setLoading(false); });
   }, []);
 
   if (loading) return <CardContent className="flex justify-center py-12"><LoadingSpinner /></CardContent>;
+  if (fetchError) return <CardContent className="py-8 text-center"><p className="text-fifa-red">{fetchError}</p></CardContent>;
   if (!data) return null;
 
   return (

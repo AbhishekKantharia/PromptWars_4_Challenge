@@ -40,12 +40,17 @@ export async function GET(request: NextRequest) {
       ? { type, options: (MOCK_TRANSPORT_DATA as Record<string, unknown>)[type] || [] }
       : MOCK_TRANSPORT_DATA;
 
-    const prompt = `Based on the following transport data for MetLife Stadium on a match day, provide helpful recommendations to a fan. Data: ${JSON.stringify(data)}. Include specific departure times and tips.`;
-    const aiRecommendation = await generateText(prompt);
+    let recommendation = 'Public transit is recommended for match days. Metro runs every 8 minutes to MetLife Stadium Station. Arrive early to avoid congestion. Parking lots fill up 2 hours before kickoff.';
+    try {
+      const prompt = `Based on the following transport data for MetLife Stadium on a match day, provide helpful recommendations to a fan. Data: ${JSON.stringify(data)}. Include specific departure times and tips.`;
+      recommendation = await generateText(prompt);
+    } catch (error) {
+      console.warn('Gemini unavailable for transport recommendations, using fallback:', error);
+    }
 
     return NextResponse.json({
       transport: data,
-      recommendation: aiRecommendation,
+      recommendation,
       timestamp: Date.now(),
     });
   } catch (error) {

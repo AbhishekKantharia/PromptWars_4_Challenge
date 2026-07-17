@@ -17,16 +17,21 @@ interface OpsData {
 export function OperationsDashboard() {
   const [data, setData] = useState<OpsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/operations')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(setData)
-      .catch(console.error)
+      .catch((err) => { console.error(err); setFetchError('Failed to load operations data'); })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <CardContent className="flex justify-center py-12"><LoadingSpinner /></CardContent>;
+  if (fetchError) return <CardContent className="py-8 text-center"><p className="text-fifa-red">{fetchError}</p></CardContent>;
   if (!data) return null;
 
   return (
