@@ -6,7 +6,6 @@ import { cn } from '@/utils/cn';
 
 const NAV_ITEMS = [
   { href: '/matches', label: 'Matches', icon: '⚽', accent: true },
-  { href: '/broadcasts', label: 'Broadcasts', icon: '📺', accent: true },
   { href: '/assistant', label: 'AI Assistant', icon: '🤖', accent: false },
   { href: '/navigation', label: 'Navigation', icon: '🗺️', accent: false },
   { href: '/crowd', label: 'Crowd Intel', icon: '👥', accent: false },
