@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       language,
     });
   } catch (error) {
-    console.error('Chat API error:', error);
+    console.error('Chat API error:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { error: 'Failed to process your request. Please try again.' },
       { status: 500 }
