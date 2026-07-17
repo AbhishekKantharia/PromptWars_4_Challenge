@@ -70,7 +70,7 @@ export function ChatInterface() {
             <h2 className="text-sm font-semibold text-fifa-white">Stadium AI Assistant</h2>
             <p className="text-xs text-fifa-green flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-fifa-green inline-block" />
-              Online — Powered by Gemini
+              Online — Template Responses
             </p>
           </div>
         </div>

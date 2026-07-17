@@ -7,7 +7,7 @@ import type { Language } from '@/types';
 
 interface TemplateMatch {
   patterns: RegExp[];
-  handler: (matches: RegExpMatchArray, ctx: TemplateContext) => string;
+  handler: (matches: RegExpMatchArray, ctx: TemplateContext) => string | Promise<string>;
 }
 
 interface TemplateContext {
@@ -115,8 +115,36 @@ const TEMPLATES: TemplateMatch[] = [
   },
   {
     patterns: [/score|match|game|kickoff|start.*time|when.*match|fixture/i],
-    handler: (_m, ctx) => {
-      return `The current match at ${ctx.venue.name} is Argentina vs Germany, the FIFA World Cup 2026 Final. Check the official FIFA app or website for the exact kickoff time and live scores. The stadium gates open 2 hours before kickoff. Food and beverage service starts at gate opening.`;
+    handler: async (_m, _ctx) => {
+      try {
+        const res = await fetch('https://worldcup26.ir/get/games', { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          const games = data?.data || [];
+          const live = games.filter((g: Record<string, unknown>) =>
+            ['1ST HALF', '2ND HALF', 'HT', 'ET', 'PEN'].includes((g.time_elapsed as string) || '')
+          );
+          if (live.length > 0) {
+            return live.map((g: Record<string, unknown>) => {
+              const home = (g.home_team_en as string) || (g.home_team as string) || 'TBD';
+              const away = (g.away_team_en as string) || (g.away_team as string) || 'TBD';
+              const hs = g.home_score != null ? g.home_score : '—';
+              const as = g.away_score != null ? g.away_score : '—';
+              const status = (g.time_elapsed as string) || '';
+              return `${home} ${hs} - ${as} ${away} (${status})`;
+            }).join('\n');
+          }
+          const finished = games.filter((g: Record<string, unknown>) => g.time_elapsed === 'finished').slice(-3);
+          if (finished.length > 0) {
+            return 'Recent results:\n' + finished.map((g: Record<string, unknown>) => {
+              const home = (g.home_team_en as string) || 'TBD';
+              const away = (g.away_team_en as string) || 'TBD';
+              return `${home} ${g.home_score ?? '—'} - ${g.away_score ?? '—'} ${away}`;
+            }).join('\n') + '\n\nFor live scores and fixtures, visit the Matches tab.';
+          }
+        }
+      } catch {}
+      return `Check the Matches tab for the latest World Cup 2026 scores, fixtures, and results. You can also ask me about a specific team or group.`;
     },
   },
   {
@@ -165,14 +193,14 @@ const TEMPLATES: TemplateMatch[] = [
   },
 ];
 
-function matchTemplate(input: string, ctx: TemplateContext): string | null {
+async function matchTemplate(input: string, ctx: TemplateContext): Promise<string | null> {
   const lower = input.toLowerCase().trim();
 
   for (const tmpl of TEMPLATES) {
     for (const pattern of tmpl.patterns) {
       const match = lower.match(pattern);
       if (match) {
-        return tmpl.handler(match, ctx);
+        return await tmpl.handler(match, ctx);
       }
     }
   }
@@ -234,7 +262,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const templateResponse = matchTemplate(sanitized, ctx);
+    const templateResponse = await matchTemplate(sanitized, ctx);
     if (templateResponse) {
       return NextResponse.json({
         response: templateResponse,

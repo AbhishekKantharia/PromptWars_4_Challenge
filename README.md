@@ -15,7 +15,7 @@
 
 ## Overview
 
-StadiumIQ is a production-ready AI platform for FIFA World Cup 2026 fan experience, operations, accessibility, and emergency response. It covers **15 venues** across the US, Canada, and Mexico, with **10-language support**, **dual AI providers** (Google Gemini + Groq), and **WCAG 2.1 AA accessibility**.
+StadiumIQ is a production-ready AI platform for the FIFA World Cup 2026 — covering fan experience, operations, accessibility, and emergency response across **15 venues** in the US, Canada, and Mexico. It features **real-time tournament data** from the official World Cup API, a **FIFA.com-inspired visual identity**, **cinematic VFX layer**, **10-language support**, **dual AI providers** (Google Gemini + Groq), and **zero-token AI assistant** responses.
 
 ---
 
@@ -26,35 +26,67 @@ StadiumIQ is a production-ready AI platform for FIFA World Cup 2026 fan experien
 | Smart Navigation | Interactive venue map, gate directions, barrier-free routing, crowd-aware rerouting |
 | Multilingual Assistance | 10 languages with real-time translation, AI responds in user's language |
 | Accessibility | TTS/STT, screen reader support, high contrast, color-blind modes, large text |
-| Transportation | Metro, bus, taxi, parking with live availability data |
-| Crowd Management | Live density heatmaps, congestion prediction, gate-level alerts |
-| Operational Intelligence | Real-time ops dashboard, AI-generated summaries, incident monitoring |
-| Sustainability | Carbon tracking per match, green travel recommendations |
-| Emergency Response | SOS alerts, evacuation guidance, lost child protocol, incident reporting |
-| Volunteer Support | AI knowledge base, task management, incident reporting with Zod validation |
+| Transportation | Metro, bus, taxi, parking with **live OSM transit stops** |
+| Crowd Management | Live density heatmaps, **real-time weather-based** congestion prediction |
+| Operational Intelligence | Real-time ops dashboard with **live weather data**, AI-generated summaries |
+| Sustainability | Carbon tracking per match, **weather-aware** green travel recommendations |
+| Emergency Response | SOS alerts, **weather-aware** evacuation guidance, lost child protocol |
+| Volunteer Support | AI knowledge base, task management, time-of-day aware scheduling |
 
 ---
 
 ## Features
 
+### Real-Time Data (No Mock Data)
+
+- **Live Match Scores** — 104 matches, 48 teams, 12 groups from `worldcup26.ir` (60s cache)
+- **Live Score Ticker** — Horizontal scrolling bar in header with pulsing red indicators
+- **Matches Dashboard** — Tabs: LIVE | RESULTS | FIXTURES | GROUPS with standings table
+- **Weather API** — Real-time Open-Meteo forecasts for all 15 venues
+- **Transit Stops** — Real OSM Overpass bus/metro stops near each venue
+- **Geocoding** — Real Nominatim address lookup for navigation
+- **Live Network Probe** — Measures real latency/jitter/packet loss to 6 internet endpoints
+
+### FIFA.com Visual Identity
+
+- **Color Palette** — Dark navy (#020F2A), gold (#D4AF37), orange, teal accents
+- **Typography** — Bold tracking-tight headings, gold gradient text, glass-morphism cards
+- **Hero Section** — Full-viewport "WE ARE 2026" with animated stats (48 Teams / 104 Matches / 16 Venues / 3 Countries)
+- **Navigation** — Modular sidebar with gold accent on Matches, "WE ARE 26" badge
+
+### Cinematic VFX Layer (Always On)
+
+- **80 Gold/White Particles** — Canvas-based floating dust motes with mouse repulsion and glow halos
+- **4 Ambient Light Orbs** — Giant blurred gradient blobs drifting on 25-40s cycles
+- **Perspective Grid** — SVG converging grid lines at viewport bottom (FIFA broadcast depth)
+- **Cinematic Vignette** — Breathing edge-darkening radial gradient
+- **Light Streak** — Diagonal golden light beam sweeping every 12s
+- **Scanline Overlay** — Ultra-subtle CRT-style horizontal lines
+- **Glass Shimmer** — CSS pseudo-element highlight sweeping across cards
+- **Performance** — All effects `pointer-events-none`, GPU-composited, canvas pauses when tab hidden, `prefers-reduced-motion` respected
+
 ### AI-Powered Core
-- **Stadium Assistant** — Natural conversation via Google Gemini 2.0 Flash (with Groq Llama 3.3 fallback)
-- **RAG Engine** — Retrieval-Augmented Generation with venue knowledge embeddings
-- **Multilingual Support** — 10 languages (EN, ES, FR, PT, AR, HI, JA, DE, IT, ZH) with RTL support
-- **Dual AI Provider** — Gemini → Groq automatic fallback chain for reliability
+
+- **Zero-Token AI Assistant** — 18 template patterns, 0 token usage, instant responses
+- **Real-Time Data Fusion** — Chat templates fetch live weather, matches, and venue data
+- **Dual AI Provider** — Gemini -> Groq automatic fallback chain for reliability
+- **10 Languages** — EN, ES, FR, PT, AR, HI, JA, DE, IT, ZH with RTL support
 
 ### Operations & Intelligence
-- **Crowd Intelligence** — Real-time heatmaps, density estimation, congestion prediction
-- **Operations Dashboard** — Live analytics, AI-generated summaries, incident monitoring
-- **Transport Assistant** — Metro, bus, taxi, parking with live availability
-- **Sustainability Dashboard** — Carbon tracking, green travel, reusable cup progress
+
+- **Crowd Intelligence** — Real-time heatmaps, density estimation, weather-based congestion prediction
+- **Operations Dashboard** — Live weather analytics, AI-generated summaries, incident monitoring
+- **Transport Assistant** — Real OSM transit stops, metro, bus, taxi, parking
+- **Sustainability Dashboard** — Weather-based carbon tracking, energy, water metrics
 
 ### Safety & Emergency
-- **Emergency AI** — SOS alerts, evacuation guidance, lost child protocol
+
+- **Emergency AI** — SOS alerts, weather-aware evacuation guidance, lost child protocol
 - **Incident Reporting** — Structured reporting with prompt injection detection
 - **Input Sanitization** — All emergency inputs validated and sanitized
 
 ### Accessibility
+
 - **WCAG 2.1 AA** compliant
 - **ARIA labels** on all interactive elements
 - **Keyboard navigation** with focus management
@@ -68,27 +100,34 @@ StadiumIQ is a production-ready AI platform for FIFA World Cup 2026 fan experien
 
 ```
 src/
-├── app/                    # Next.js App Router pages & API routes
-│   ├── (auth)/             # Login, register pages
-│   ├── (dashboard)/        # Feature pages (assistant, navigation, etc.)
-│   └── api/                # 11 API route handlers
+├── app/                         # Next.js App Router pages & API routes
+│   ├── (auth)/                  # Login, register pages
+│   ├── (dashboard)/             # Feature pages (assistant, navigation, matches, etc.)
+│   └── api/                     # 12 API route handlers
 ├── components/
-│   ├── ui/                 # Reusable UI primitives (button, input, modal, toast)
-│   ├── layout/             # Sidebar, Header, MainLayout
-│   ├── chat/               # AI Chat interface
-│   ├── navigation/         # Venue map (SVG)
-│   ├── crowd/              # Crowd dashboard
-│   ├── emergency/          # Emergency panel with SOS
-│   ├── sustainability/     # Sustainability dashboard
-│   ├── volunteer/          # Volunteer assistant
-│   ├── operations/         # Operations dashboard
-│   └── transport/          # Transport assistant
-├── hooks/                  # Custom React hooks
-├── lib/                    # Core libraries (Gemini, Groq, RAG, Crowd Engine)
-├── contexts/               # React contexts (Accessibility, Language)
-├── types/                  # TypeScript type definitions
-├── utils/                  # Security, validation, helpers
-└── constants/              # 15 venues, AI models, prompts, languages
+│   ├── ui/                      # Reusable UI primitives (button, input, modal, toast)
+│   ├── layout/                  # Sidebar, Header, MainLayout
+│   ├── chat/                    # AI Chat interface
+│   ├── navigation/              # Venue map (SVG)
+│   ├── matches/                 # LiveScoreBar, MatchCard, MatchesDashboard
+│   ├── crowd/                   # Crowd dashboard (real weather data)
+│   ├── emergency/               # Emergency panel with SOS
+│   ├── sustainability/          # Sustainability dashboard
+│   ├── volunteer/               # Volunteer assistant
+│   ├── operations/              # Operations dashboard
+│   ├── transport/               # Transport assistant (real OSM stops)
+│   └── vfx/                     # ParticleField, AmbientGlow, GridDepth, VFXLayer
+├── hooks/                       # Custom React hooks
+├── lib/
+│   ├── gemini.ts                # Gemini -> Groq fallback chain
+│   ├── groq.ts                  # Groq provider
+│   ├── realtime-data.ts         # Open-Meteo, OSM Overpass, Nominatim
+│   ├── match-data.ts            # worldcup26.ir API integration
+│   └── rag-engine.ts            # RAG with venue knowledge embeddings
+├── contexts/                    # React contexts (Accessibility, Language)
+├── types/                       # TypeScript type definitions
+├── utils/                       # Security, validation, helpers
+└── constants/                   # 15 venues, AI models, prompts, languages
 ```
 
 ---
@@ -102,9 +141,10 @@ src/
 | Styling | Tailwind CSS 3.4, Framer Motion |
 | AI (Primary) | Google Gemini 2.0 Flash |
 | AI (Fallback) | Groq Llama 3.3 70B Versatile |
+| Real-Time Data | Open-Meteo, OSM Overpass, Nominatim, worldcup26.ir |
 | RAG | Cosine similarity with Gemini embeddings |
-| Auth | Firebase Authentication |
 | Validation | Zod schemas |
+| VFX | Canvas 2D, CSS keyframes, SVG |
 | Deployment | Vercel (serverless) |
 
 ---
@@ -114,7 +154,7 @@ src/
 ### Prerequisites
 - Node.js 18+
 - Google AI Studio API key (for Gemini)
-- Groq API key (optional, for fallback)
+- Groq API key (for fallback)
 
 ### Environment Variables
 
@@ -123,13 +163,6 @@ Create `.env.local`:
 ```bash
 GEMINI_API_KEY=your-gemini-api-key
 GROQ_API_KEY=your-groq-api-key
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
 ```
 
 ### Installation
@@ -149,17 +182,29 @@ Open http://localhost:3000
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/chat` | POST | AI chat with Gemini/Groq fallback |
-| `/api/operations` | GET | Stadium operations summary |
-| `/api/transport` | GET | Transport data with AI insights |
-| `/api/operations` | GET | Real-time operations dashboard |
-| `/api/crowd` | GET | Crowd simulation data |
-| `/api/navigation` | GET | Navigation/wayfinding data |
-| `/api/sustainability` | GET | Sustainability metrics |
+| `/api/chat` | POST | AI chat — 18 template patterns (0 token usage), async data fusion |
+| `/api/matches` | GET | Live/recent/upcoming matches, groups, teams from worldcup26.ir |
+| `/api/health` | GET | Service health (Open-Meteo, Overpass, worldCupApi probes) |
+| `/api/operations` | GET | Stadium operations with real weather data |
+| `/api/crowd` | GET | Crowd simulation with real weather data |
+| `/api/navigation` | GET | Navigation/wayfinding with real transit stops |
+| `/api/transport` | GET | Transport data with real OSM stops |
+| `/api/sustainability` | GET | Sustainability metrics with weather-based calculations |
 | `/api/volunteer` | GET/POST | Volunteer task management |
-| `/api/emergency` | POST | Emergency incident reporting |
+| `/api/emergency` | POST | Emergency incident reporting with weather-aware protocols |
 | `/api/translate` | POST | Translation via Gemini |
-| `/api/health` | GET | Service health check |
+
+---
+
+## Real-Time Data Sources
+
+| Source | What It Provides | Update Frequency |
+|--------|-----------------|-----------------|
+| [worldcup26.ir](https://worldcup26.ir) | Match scores, teams, groups, standings | 60s cache |
+| [Open-Meteo](https://open-meteo.com) | Weather forecasts for 15 venues | On-demand |
+| [OSM Overpass](https://overpass-turbo.eu) | Transit stops near venues | On-demand |
+| [Nominatim](https://nominatim.openstreetmap.org) | Geocoding / reverse geocoding | On-demand |
+| [ipify](https://www.ipify.org) | Public IP for network probe | On-demand |
 
 ---
 

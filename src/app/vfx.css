@@ -1,0 +1,282 @@
+/* ============================================
+   VFX Animation Library — FIFA Smart Stadium
+   High-level smooth CGI/VFX effects
+   ============================================ */
+
+/* --- Particle float --- */
+@keyframes vfx-float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-20px) translateX(10px); }
+  50% { transform: translateY(-8px) translateX(-6px); }
+  75% { transform: translateY(-25px) translateX(4px); }
+}
+
+@keyframes vfx-float-slow {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); }
+  33% { transform: translateY(-15px) translateX(8px) scale(1.05); }
+  66% { transform: translateY(-30px) translateX(-12px) scale(0.95); }
+}
+
+/* --- Ambient orb drift --- */
+@keyframes vfx-orb-drift-1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.04; }
+  25% { transform: translate(60px, -40px) scale(1.1); opacity: 0.06; }
+  50% { transform: translate(20px, -80px) scale(0.95); opacity: 0.03; }
+  75% { transform: translate(-40px, -30px) scale(1.05); opacity: 0.05; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.04; }
+}
+
+@keyframes vfx-orb-drift-2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.03; }
+  25% { transform: translate(-50px, 30px) scale(1.08); opacity: 0.05; }
+  50% { transform: translate(-80px, -20px) scale(0.92); opacity: 0.04; }
+  75% { transform: translate(-20px, 50px) scale(1.12); opacity: 0.06; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.03; }
+}
+
+@keyframes vfx-orb-drift-3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.05; }
+  33% { transform: translate(40px, 60px) scale(1.15); opacity: 0.03; }
+  66% { transform: translate(-30px, 20px) scale(0.88); opacity: 0.06; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.05; }
+}
+
+@keyframes vfx-orb-drift-4 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.04; }
+  20% { transform: translate(-70px, -50px) scale(1.1); opacity: 0.06; }
+  40% { transform: translate(30px, -90px) scale(0.9); opacity: 0.03; }
+  60% { transform: translate(80px, -20px) scale(1.08); opacity: 0.05; }
+  80% { transform: translate(-10px, 40px) scale(0.95); opacity: 0.04; }
+  100% { transform: translate(0, 0) scale(1); opacity: 0.04; }
+}
+
+/* --- Glow pulse --- */
+@keyframes vfx-glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.1), 0 0 60px rgba(212, 175, 55, 0.05); }
+  50% { box-shadow: 0 0 40px rgba(212, 175, 55, 0.2), 0 0 80px rgba(212, 175, 55, 0.1); }
+}
+
+@keyframes vfx-glow-ring {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* --- Grid scroll --- */
+@keyframes vfx-grid-scroll {
+  0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+  100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+}
+
+/* --- Shimmer --- */
+@keyframes vfx-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* --- Scanline --- */
+@keyframes vfx-scanline {
+  0% { transform: translateY(-100vh); }
+  100% { transform: translateY(100vh); }
+}
+
+/* --- Letter reveal --- */
+@keyframes vfx-letter-in {
+  0% { opacity: 0; transform: translateY(20px) rotateX(-40deg); filter: blur(4px); }
+  60% { opacity: 0.8; transform: translateY(-2px) rotateX(5deg); filter: blur(0px); }
+  100% { opacity: 1; transform: translateY(0) rotateX(0deg); filter: blur(0px); }
+}
+
+@keyframes vfx-letter-shimmer {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* --- Cinematic vignette --- */
+@keyframes vfx-vignette-breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.7; }
+}
+
+/* --- Light streak --- */
+@keyframes vfx-light-streak {
+  0% { transform: translateX(-100%) rotate(-15deg); opacity: 0; }
+  10% { opacity: 0.15; }
+  20% { opacity: 0; }
+  100% { transform: translateX(200%) rotate(-15deg); opacity: 0; }
+}
+
+/* --- Orb rotation --- */
+@keyframes vfx-orb-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* --- Focus ring expansion --- */
+@keyframes vfx-focus-expand {
+  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+
+
+/* ============================================
+   VFX Utility Classes
+   ============================================ */
+
+/* Ambient orbs */
+.vfx-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.vfx-orb-gold {
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.15) 0%, transparent 70%);
+  animation: vfx-orb-drift-1 30s ease-in-out infinite;
+}
+
+.vfx-orb-teal {
+  background: radial-gradient(circle, rgba(0, 191, 165, 0.12) 0%, transparent 70%);
+  animation: vfx-orb-drift-2 35s ease-in-out infinite;
+}
+
+.vfx-orb-white {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  animation: vfx-orb-drift-3 25s ease-in-out infinite;
+}
+
+.vfx-orb-blue {
+  background: radial-gradient(circle, rgba(13, 44, 84, 0.2) 0%, transparent 70%);
+  animation: vfx-orb-drift-4 40s ease-in-out infinite;
+}
+
+/* Cinematic vignette */
+.vfx-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
+  animation: vfx-vignette-breathe 8s ease-in-out infinite;
+}
+
+/* Light streak */
+.vfx-light-streak {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.03), transparent);
+  transform: rotate(-15deg);
+  animation: vfx-light-streak 12s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Grid depth lines */
+.vfx-grid-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40vh;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.06) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.06) 0%, transparent 100%);
+}
+
+/* Shimmer glass effect */
+.vfx-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.vfx-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(212, 175, 55, 0.04) 45%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(212, 175, 55, 0.04) 55%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: vfx-shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Scanline overlay */
+.vfx-scanline {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.015) 2px,
+    rgba(0, 0, 0, 0.015) 4px
+  );
+}
+
+.vfx-scanline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(212, 175, 55, 0.02) 50%,
+    transparent 100%
+  );
+  animation: vfx-scanline 8s linear infinite;
+}
+
+/* Letter reveal */
+.vfx-reveal-letter {
+  display: inline-block;
+  opacity: 0;
+  animation: vfx-letter-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  perspective: 500px;
+}
+
+/* Glow pulse on hover */
+.vfx-glow-hover {
+  transition: box-shadow 0.4s ease, transform 0.3s ease;
+}
+
+.vfx-glow-hover:hover {
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.15), 0 0 60px rgba(212, 175, 55, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Focus ring animation */
+.vfx-focus-ring:focus-visible {
+  animation: vfx-focus-expand 0.6s ease-out;
+}
+
+/* Disabled state for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .vfx-orb,
+  .vfx-vignette,
+  .vfx-light-streak,
+  .vfx-scanline,
+  .vfx-scanline::after,
+  .vfx-shimmer::after {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  .vfx-reveal-letter {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}

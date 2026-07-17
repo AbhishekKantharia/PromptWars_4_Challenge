@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default function OperationsPage() {
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-fifa-white">Operations Dashboard</h1>
-        <p className="text-sm text-fifa-gray mt-1">Real-time venue intelligence for management teams</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-fifa-white tracking-tight">Operations Dashboard</h1>
+        <p className="text-sm text-fifa-silver mt-1">Real-time venue intelligence for management teams</p>
       </div>
       <OperationsDashboard />
     </div>

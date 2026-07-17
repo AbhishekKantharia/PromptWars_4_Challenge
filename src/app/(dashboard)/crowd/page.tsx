@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default function CrowdPage() {
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-fifa-white">Crowd Intelligence</h1>
-        <p className="text-sm text-fifa-gray mt-1">Real-time monitoring with AI-powered congestion predictions</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-fifa-white tracking-tight">Crowd Intelligence</h1>
+        <p className="text-sm text-fifa-silver mt-1">Real-time monitoring with AI-powered congestion predictions</p>
       </div>
       <CrowdDashboard />
     </div>

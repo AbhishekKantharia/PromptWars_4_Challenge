@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './vfx.css';
 
 export const metadata: Metadata = {
   title: 'FIFA Smart Stadium 2026 — AI-Powered Tournament Operations',
@@ -14,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="min-h-screen bg-fifa-navy text-fifa-white antialiased font-sans">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen bg-fifa-navy text-fifa-white antialiased font-sans" suppressHydrationWarning>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded-lg focus:bg-fifa-accent focus:text-fifa-navy focus:px-4 focus:py-2">
           Skip to main content
         </a>
