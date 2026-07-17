@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
+import { GoogleGenerativeAI, type GenerativeModel, type Content } from '@google/generative-ai';
 import { GEMINI_MODEL, GEMINI_EMBEDDING_MODEL } from '@/constants';
 
 let genAI: GoogleGenerativeAI;
@@ -40,9 +40,12 @@ export function getEmbeddingModel(): GenerativeModel {
 
 export async function generateText(prompt: string, systemInstruction?: string): Promise<string> {
   const m = getGeminiModel();
+  const sysInst = systemInstruction
+    ? ({ role: 'user', parts: [{ text: systemInstruction }] } as Content)
+    : undefined;
   const result = await m.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined,
+    systemInstruction: sysInst,
   });
   return result.response.text();
 }
@@ -53,12 +56,15 @@ export async function generateChat(
   systemInstruction?: string
 ): Promise<string> {
   const m = getGeminiModel();
+  const sysInst = systemInstruction
+    ? ({ role: 'user', parts: [{ text: systemInstruction }] } as Content)
+    : undefined;
   const chat = m.startChat({
     history: history.map((h) => ({
       role: h.role as 'user' | 'model',
       parts: h.parts.map((p) => ({ text: p.text })),
     })),
-    systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined,
+    systemInstruction: sysInst,
   });
   const result = await chat.sendMessage(message);
   return result.response.text();
