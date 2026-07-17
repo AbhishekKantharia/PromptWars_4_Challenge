@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { apiUrl } from '@/lib/api-client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -30,7 +31,7 @@ export function CrowdDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/crowd?progress=${matchProgress}`);
+      const res = await fetch(apiUrl(`/api/crowd?progress=${matchProgress}`));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);

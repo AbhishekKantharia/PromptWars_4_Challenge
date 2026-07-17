@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiUrl } from '@/lib/api-client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ export function VolunteerAssistant() {
   const [askLoading, setAskLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/volunteer?action=tasks')
+    fetch(apiUrl('/api/volunteer?action=tasks'))
       .then((r) => r.json())
       .then((d) => setTasks(d.tasks || []))
       .catch(console.error)
@@ -28,7 +29,7 @@ export function VolunteerAssistant() {
     if (!question.trim()) return;
     setAskLoading(true);
     try {
-      const res = await fetch('/api/volunteer', {
+      const res = await fetch(apiUrl('/api/volunteer'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'ask', question }),

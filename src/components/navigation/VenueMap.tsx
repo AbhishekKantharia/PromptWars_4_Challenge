@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { apiUrl } from '@/lib/api-client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +51,7 @@ export function VenueMap() {
         crowdAware: 'true',
       });
 
-      const res = await fetch(`/api/navigation?${params}`);
+      const res = await fetch(apiUrl(`/api/navigation?${params}`));
       const data = await res.json();
 
       if (data.route) {

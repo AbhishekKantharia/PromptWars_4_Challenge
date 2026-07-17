@@ -2,6 +2,7 @@ import type { Language } from '@/types';
 
 export const APP_NAME = 'FIFA Smart Stadium 2026';
 export const APP_DESCRIPTION = 'AI-Powered Smart Stadium & Tournament Operations Platform';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const VENUES = [
   { id: 'metlife', name: 'MetLife Stadium', city: 'New York / New Jersey', capacity: 82500 },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { apiUrl } from '@/lib/api-client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,7 @@ export function EmergencyPanel() {
   const handleSOS = async () => {
     setSosLoading(true);
     try {
-      const res = await fetch('/api/emergency', {
+      const res = await fetch(apiUrl('/api/emergency'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -42,7 +43,7 @@ export function EmergencyPanel() {
   const handleLostChild = async () => {
     setLostChildLoading(true);
     try {
-      const res = await fetch('/api/emergency', {
+      const res = await fetch(apiUrl('/api/emergency'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'lost_child', ...lostChildForm, childAge: parseInt(lostChildForm.childAge) }),
@@ -58,7 +59,7 @@ export function EmergencyPanel() {
     if (!reportType || !reportDesc) return;
     setReportLoading(true);
     try {
-      await fetch('/api/emergency', {
+      await fetch(apiUrl('/api/emergency'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
