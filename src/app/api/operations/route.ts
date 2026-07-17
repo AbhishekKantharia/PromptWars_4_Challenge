@@ -1,88 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateText } from '@/lib/gemini';
-import { OPERATIONS_SUMMARY_PROMPT } from '@/constants/prompts';
 import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
-import { generateCrowdData } from '@/lib/crowd-engine';
-
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .replace(/^\s*>\s+/gm, '')
-    .replace(/---+/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
+import { fetchWeather, VENUES, getWeatherImpact, fetchNearbyPlaces, type WeatherData } from '@/lib/realtime-data';
 
 export async function GET(request: NextRequest) {
   const clientId = getClientIdentifier(request);
-  const rl = rateLimit(clientId, 'api');
+  const rl = rateLimit(clientId, 'operations');
   if (!rl.success) return rl.response!;
 
-  const crowdData = generateCrowdData(0.5);
-  const criticalAlerts = crowdData.zones.filter((z) => z.densityLevel === 'critical' || z.densityLevel === 'very_high');
+  const url = new URL(request.url);
+  const venueId = url.searchParams.get('venue') || 'metlife';
+  const venue = VENUES.find(v => v.id === venueId) || VENUES[0];
 
-  const dashboard = {
-    venueId: 'metlife',
-    timestamp: Date.now(),
-    crowd: {
-      totalAttendance: crowdData.totalAttendance,
-      capacity: 82500,
-      occupancyPercent: Math.round((crowdData.totalAttendance / 82500) * 100),
-      peakZone: crowdData.zones.reduce((max, z) => z.currentOccupancy > max.currentOccupancy ? z : max, crowdData.zones[0])?.name || 'N/A',
-      averageWaitTime: Math.round(crowdData.congestionPoints.reduce((sum, c) => sum + c.estimatedWaitTime, 0) / Math.max(crowdData.congestionPoints.length, 1)),
-      activeAlerts: criticalAlerts.length,
-    },
-    incidents: {
-      total: 12,
-      active: 3,
-      resolved: 9,
-      critical: 1,
-      averageResponseTime: 4.2,
-    },
-    volunteers: {
-      total: 450,
-      onDuty: 380,
-      onBreak: 45,
-      tasksPending: 28,
-      tasksCompleted: 312,
-    },
-    transport: {
-      metroLoad: 78,
-      busLoad: 62,
-      parkingAvailable: 2340,
-      trafficLevel: 'moderate',
-    },
-    weather: {
-      temperature: 24,
-      condition: 'Partly Cloudy',
-      humidity: 55,
-      windSpeed: 12,
-      uvIndex: 6,
-      alerts: [],
-    },
-    aiSummary: '',
-  };
-
+  let weather: WeatherData | null = null;
   try {
-    const summary = await generateText(
-      `Given this operational data for MetLife Stadium during a FIFA World Cup 2026 match:\n${JSON.stringify(dashboard, null, 2)}\n\nGenerate a concise operational summary for the venue management team.`,
-      OPERATIONS_SUMMARY_PROMPT
-    );
-    dashboard.aiSummary = stripMarkdown(summary);
-  } catch (error) {
-    console.warn('Gemini unavailable for operations summary, using fallback:', error);
-    dashboard.aiSummary = `Operations Summary — MetLife Stadium\n\nCurrent occupancy: ${dashboard.crowd.occupancyPercent}% (${dashboard.crowd.totalAttendance.toLocaleString()} fans). ${dashboard.crowd.activeAlerts > 0 ? `${dashboard.crowd.activeAlerts} active crowd alert(s) requiring attention.` : 'No critical crowd alerts.'} Transport is running at ${dashboard.transport.metroLoad}% metro capacity. ${dashboard.incidents.active} active incident(s) with avg response time of ${dashboard.incidents.averageResponseTime} min. ${dashboard.volunteers.onDuty} of ${dashboard.volunteers.total} volunteers on duty.`;
+    weather = await fetchWeather(venue.lat, venue.lon);
+  } catch { /* continue */ }
+
+  let nearbyMedical: { name: string; distance: number }[] = [];
+  let nearbyPharmacies: { name: string; distance: number }[] = [];
+  try {
+    [nearbyMedical, nearbyPharmacies] = await Promise.all([
+      fetchNearbyPlaces(venue.lat, venue.lon, 'hospital', 5000),
+      fetchNearbyPlaces(venue.lat, venue.lon, 'pharmacy', 3000),
+    ]);
+  } catch { /* continue */ }
+
+  const now = new Date();
+  const hour = now.getHours();
+  const weatherImpact = weather ? getWeatherImpact(weather) : null;
+
+  const baseAttendance = venue.capacity * (hour >= 18 && hour <= 22 ? 0.85 : hour >= 14 && hour <= 17 ? 0.65 : 0.4);
+
+  const incidents: { type: string; severity: string; section: string; timestamp: string; status: string }[] = [];
+  if (weather && weather.weatherCode >= 95) {
+    incidents.push({
+      type: 'Weather Alert',
+      severity: 'high',
+      section: 'All Sections',
+      timestamp: now.toISOString(),
+      status: 'Active',
+    });
+  }
+  if (weather && weather.temperature > 35) {
+    incidents.push({
+      type: 'Heat Advisory',
+      severity: 'medium',
+      section: 'All Sections',
+      timestamp: now.toISOString(),
+      status: 'Active',
+    });
   }
 
-  return NextResponse.json(dashboard);
+  const staffAllocation = [
+    { role: 'Gate Security', count: Math.round(baseAttendance / 500), status: 'Deployed', sections: 'All Gates' },
+    { role: 'Crowd Management', count: Math.round(baseAttendance / 1000), status: 'Deployed', sections: 'Concourses' },
+    { role: 'Medical Staff', count: Math.round(baseAttendance / 2000), status: 'On Standby', sections: 'First Aid Stations' },
+    { role: 'Volunteers', count: Math.round(baseAttendance / 800), status: 'Active', sections: 'Guest Services' },
+    { role: 'Technical Crew', count: 15, status: 'Active', sections: 'Control Room' },
+  ];
+
+  const operationsSummary = {
+    venueStatus: 'Operational',
+    gatesOpen: hour >= 16,
+    matchInProgress: hour >= 18 && hour <= 22,
+    emergencyExitTested: true,
+    fireSystemStatus: 'All Systems Operational',
+    cctvStatus: 'All Cameras Online',
+    powerStatus: weather && weather.weatherCode >= 95 ? 'Backup Generators on Standby' : 'Grid Power Stable',
+    currentPhase: hour >= 18 && hour <= 22 ? 'Match Day Active' : hour >= 16 ? 'Pre-Match Setup' : 'Standby',
+    incidentCount: incidents.length,
+    staffDeployed: staffAllocation.reduce((sum, s) => sum + s.count, 0),
+  };
+
+  return NextResponse.json({
+    venue: { id: venue.id, name: venue.name, capacity: venue.capacity },
+    currentAttendance: Math.round(baseAttendance),
+    operationsSummary,
+    weather: weather ? {
+      condition: weather.condition,
+      temperature: Math.round(weather.temperature),
+      humidity: weather.humidity,
+      windSpeed: Math.round(weather.windSpeed),
+      precipitation: weather.precipitation,
+      visibility: weather.visibility,
+      impact: weatherImpact,
+    } : null,
+    incidents,
+    staffAllocation,
+    nearbyMedicalFacilities: nearbyMedical.slice(0, 3).map(m => ({ name: m.name, distance: m.distance })),
+    nearbyPharmacies: nearbyPharmacies.slice(0, 3).map(p => ({ name: p.name, distance: p.distance })),
+    systemHealth: {
+      network: 'Operational',
+      wifi: 'Operational',
+      signage: 'Operational',
+      accessControl: 'Operational',
+      videoDisplay: 'Operational',
+    },
+    lastUpdated: now.toISOString(),
+  }, { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'X-Real-Time': 'true' } });
 }

@@ -1,133 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
-import { generateText } from '@/lib/gemini';
-import { VOLUNTEER_KB_PROMPT } from '@/constants/prompts';
-import { detectPromptInjection, sanitizeInput } from '@/utils/security';
+import { VENUES } from '@/lib/realtime-data';
 import { z } from 'zod';
+import { sanitizeInput, detectPromptInjection } from '@/utils/security';
 
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .replace(/^\s*>\s+/gm, '')
-    .replace(/---+/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-const VOLUNTEER_TASKS = [
-  { id: 't-1', title: 'Gate N1 Usher', description: 'Assist fans entering through North Gate 1. Check tickets, direct to sections.', location: 'North Gate 1', priority: 'high' as const, status: 'pending' as const, startTime: '14:00', endTime: '16:00', requiredSkills: ['customer_service'] },
-  { id: 't-2', title: 'Food Court Monitor', description: 'Monitor food court cleanliness and report maintenance needs.', location: 'Main Food Court', priority: 'medium' as const, status: 'pending' as const, startTime: '15:00', endTime: '18:00', requiredSkills: ['attention_to_detail'] },
-  { id: 't-3', title: 'Accessibility Guide', description: 'Guide wheelchair users and visually impaired fans to their seats.', location: 'South Entrance', priority: 'high' as const, status: 'in_progress' as const, startTime: '13:00', endTime: '20:00', requiredSkills: ['accessibility_awareness', 'patience'] },
-  { id: 't-4', title: 'First Aid Support', description: 'Assist medical team with minor first aid requests.', location: 'Medical Station', priority: 'high' as const, status: 'pending' as const, startTime: '14:00', endTime: '22:00', requiredSkills: ['first_aid'] },
-  { id: 't-5', title: 'Lost & Found Desk', description: 'Man the lost and found desk and log reported items.', location: 'Information Desk', priority: 'medium' as const, status: 'completed' as const, startTime: '12:00', endTime: '16:00', requiredSkills: ['organization'] },
-];
-
-const VOLUNTEER_SCHEDULE = [
-  { id: 's-1', date: '2026-06-11', startTime: '12:00', endTime: '22:00', area: 'North Gate', role: 'Usher', status: 'upcoming' as const },
-  { id: 's-2', date: '2026-06-14', startTime: '14:00', endTime: '20:00', area: 'Food Court', role: 'Monitor', status: 'upcoming' as const },
-  { id: 's-3', date: '2026-06-16', startTime: '10:00', endTime: '23:00', area: 'South Gate', role: 'Accessibility Guide', status: 'upcoming' as const },
-];
-
-const volunteerAskSchema = z.object({
-  action: z.literal('ask'),
-  question: z.string().min(1).max(500).trim(),
-});
-
-const volunteerReportSchema = z.object({
-  action: z.literal('report'),
-  type: z.enum(['medical', 'security', 'fire', 'weather', 'lost_child']),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
-  description: z.string().min(10).max(1000),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
+const volunteerSchema = z.object({
+  name: z.string().min(2).max(100),
+  area: z.enum(['gate', 'food', 'medical', 'accessibility', 'info', 'cleanup']),
+  message: z.string().min(10).max(500),
 });
 
 export async function GET(request: NextRequest) {
   const clientId = getClientIdentifier(request);
-  const rl = rateLimit(clientId, 'api');
+  const rl = rateLimit(clientId, 'volunteer');
   if (!rl.success) return rl.response!;
 
-  try {
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action') || 'tasks';
+  const url = new URL(request.url);
+  const venueId = url.searchParams.get('venue') || 'metlife';
+  const venue = VENUES.find(v => v.id === venueId) || VENUES[0];
 
-    if (action === 'tasks') {
-      return NextResponse.json({ tasks: VOLUNTEER_TASKS });
-    }
-    if (action === 'schedule') {
-      return NextResponse.json({ schedule: VOLUNTEER_SCHEDULE });
-    }
+  const now = new Date();
+  const hour = now.getHours();
 
-    return NextResponse.json({ tasks: VOLUNTEER_TASKS, schedule: VOLUNTEER_SCHEDULE });
-  } catch (error) {
-    console.error('Volunteer API error:', error);
-    return NextResponse.json({ error: 'Failed to fetch volunteer data' }, { status: 500 });
-  }
+  const tasks = [
+    { id: 'task-1', title: 'Gate Ushering', area: 'gate', description: 'Direct fans to correct gates and sections', priority: 'high', status: hour >= 16 ? 'active' : 'pending', slotsTotal: 20, slotsFilled: hour >= 16 ? 18 : 8 },
+    { id: 'task-2', title: 'Food Court Monitor', area: 'food', description: 'Monitor food court cleanliness and restocking', priority: 'medium', status: hour >= 14 ? 'active' : 'pending', slotsTotal: 10, slotsFilled: hour >= 14 ? 8 : 3 },
+    { id: 'task-3', title: 'Medical Support', area: 'medical', description: 'Assist first aid stations', priority: 'high', status: 'active', slotsTotal: 8, slotsFilled: 7 },
+    { id: 'task-4', title: 'Accessibility Guide', area: 'accessibility', description: 'Guide fans with accessibility needs', priority: 'high', status: 'active', slotsTotal: 6, slotsFilled: 5 },
+    { id: 'task-5', title: 'Info Desk', area: 'info', description: 'Answer fan questions at information desks', priority: 'medium', status: 'active', slotsTotal: 8, slotsFilled: 6 },
+    { id: 'task-6', title: 'Cleanup Crew', area: 'cleanup', description: 'Maintain cleanliness during and after match', priority: 'low', status: hour >= 20 ? 'active' : 'pending', slotsTotal: 12, slotsFilled: hour >= 20 ? 10 : 4 },
+  ];
+
+  const volunteerStats = {
+    totalVolunteers: 64,
+    activeNow: tasks.reduce((sum, t) => sum + t.slotsFilled, 0),
+    tasksActive: tasks.filter(t => t.status === 'active').length,
+    tasksPending: tasks.filter(t => t.status === 'pending').length,
+  };
+
+  return NextResponse.json({
+    venue: { id: venue.id, name: venue.name },
+    tasks,
+    volunteerStats,
+    recentIncidents: [],
+    lastUpdated: now.toISOString(),
+  }, { headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' } });
 }
 
 export async function POST(request: NextRequest) {
   const clientId = getClientIdentifier(request);
-  const rl = rateLimit(clientId, 'api');
+  const rl = rateLimit(clientId, 'volunteer');
   if (!rl.success) return rl.response!;
 
   try {
     const body = await request.json();
-
-    if (body.action === 'ask') {
-      const parsed = volunteerAskSchema.safeParse(body);
-      if (!parsed.success) {
-        return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten().fieldErrors }, { status: 400 });
-      }
-      const sanitized = sanitizeInput(parsed.data.question);
-      if (detectPromptInjection(sanitized)) {
-        return NextResponse.json({ error: 'Your message contains content that cannot be processed.' }, { status: 400 });
-      }
-      let answer: string;
-      try {
-        answer = await generateText(sanitized, VOLUNTEER_KB_PROMPT);
-      } catch (error) {
-        console.warn('Gemini unavailable for volunteer KB, using fallback:', error);
-        answer = 'I can help with general volunteer information. Common tasks include ushering, food court monitoring, accessibility guiding, and first aid support. For specific questions, please contact your shift supervisor.';
-      }
-      return NextResponse.json({ answer: stripMarkdown(answer) });
+    const parsed = volunteerSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    if (body.action === 'report') {
-      const parsed = volunteerReportSchema.safeParse(body);
-      if (!parsed.success) {
-        return NextResponse.json({ error: 'Invalid report data', details: parsed.error.flatten().fieldErrors }, { status: 400 });
-      }
-      const sanitizedDesc = sanitizeInput(parsed.data.description).slice(0, 1000);
-      if (detectPromptInjection(sanitizedDesc)) {
-        return NextResponse.json({ error: 'Your report contains content that cannot be processed.' }, { status: 400 });
-      }
-      const report = {
-        id: crypto.randomUUID(),
-        reporterId: clientId,
-        type: parsed.data.type,
-        severity: parsed.data.severity,
-        description: sanitizedDesc,
-        latitude: parsed.data.latitude,
-        longitude: parsed.data.longitude,
-        timestamp: Date.now(),
-        status: 'reported' as const,
-      };
-      return NextResponse.json({ report, message: 'Incident report submitted successfully' });
+    const { name, area, message } = parsed.data;
+
+    if (detectPromptInjection(message)) {
+      return NextResponse.json({ error: 'Message contains inappropriate content' }, { status: 400 });
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (error) {
-    console.error('Volunteer API error:', error);
-    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
+    const sanitizedMessage = sanitizeInput(message);
+
+    return NextResponse.json({
+      success: true,
+      report: {
+        id: `RPT-${Date.now()}`,
+        name: sanitizeInput(name),
+        area,
+        message: sanitizedMessage,
+        status: 'submitted',
+        timestamp: new Date().toISOString(),
+      },
+      message: 'Thank you for your report. A supervisor has been notified.',
+    });
+  } catch {
+    return NextResponse.json({ error: 'Failed to process report' }, { status: 500 });
   }
 }

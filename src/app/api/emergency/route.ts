@@ -1,39 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { generateText } from '@/lib/gemini';
-import { EMERGENCY_RESPONSE_PROMPT } from '@/constants/prompts';
-import { emergencyReportSchema, sosAlertSchema } from '@/utils/validation';
 import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
-import { EMERGENCY_PHONE, MEDICAL_STATION_PHONE } from '@/constants';
-import { detectPromptInjection, sanitizeInput } from '@/utils/security';
+import { VENUES, fetchWeather, getWeatherImpact, type WeatherData } from '@/lib/realtime-data';
+import { z } from 'zod';
+import { sanitizeInput, detectPromptInjection } from '@/utils/security';
 
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .replace(/^\s*>\s+/gm, '')
-    .replace(/---+/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-const lostChildSchema = z.object({
-  action: z.literal('lost_child'),
-  childName: z.string().min(1),
-  childAge: z.number().min(1).max(17),
-  childDescription: z.string().min(10),
-  lastSeenLocation: z.string().min(1),
-  guardianName: z.string().min(1),
-  guardianContact: z.string().min(1),
+const emergencySchema = z.object({
+  type: z.enum(['medical', 'fire', 'security', 'weather', 'lost_person', 'structural']),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  location: z.string().min(2).max(200),
+  description: z.string().min(5).max(500),
+  reporterName: z.string().min(1).max(100).optional(),
+  reporterContact: z.string().max(50).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -43,129 +20,93 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action } = body;
-
-    if (action === 'sos') {
-      const parsed = sosAlertSchema.safeParse(body);
-      if (!parsed.success) {
-        return NextResponse.json({ error: 'Invalid SOS data' }, { status: 400 });
-      }
-
-      const alert = {
-        id: crypto.randomUUID(),
-        ...parsed.data,
-        timestamp: Date.now(),
-        resolved: false,
-        emergencyContacts: [
-          { name: 'Emergency Services', phone: EMERGENCY_PHONE },
-          { name: 'Stadium Medical', phone: MEDICAL_STATION_PHONE },
-        ],
-      };
-
-      return NextResponse.json({
-        alert,
-        message: 'SOS alert has been triggered. Emergency services have been notified.',
-        instructions: [
-          'Stay calm and stay where you are if safe to do so.',
-          'Emergency responders are being dispatched to your location.',
-          'If possible, move to the nearest marked assembly point.',
-          `Call ${EMERGENCY_PHONE} for immediate assistance.`,
-        ],
-      });
+    const parsed = emergencySchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid emergency report', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    if (action === 'evacuation') {
-      const routes = [
-        { id: 'evac-1', name: 'Primary Route - North Exit', time: '8 min', accessible: true, assemblyPoint: 'Parking Lot North' },
-        { id: 'evac-2', name: 'Secondary Route - South Exit', time: '12 min', accessible: true, assemblyPoint: 'Meadowlands Racetrack' },
-        { id: 'evac-3', name: 'Emergency Route - West VIP', time: '6 min', accessible: false, assemblyPoint: 'Route 120 Shoulder' },
-      ];
+    const { type, severity, location, description } = parsed.data;
 
-      return NextResponse.json({
-        routes,
-        instructions: [
-          'Follow illuminated exit signs to the nearest emergency exit.',
-          'Do not use elevators — use stairs only.',
-          'Proceed calmly to the designated assembly point.',
-          'Follow instructions from security personnel.',
-          'Account for all members of your group.',
-        ],
-        emergencyContacts: [
-          { name: 'Emergency Hotline', phone: EMERGENCY_PHONE },
-          { name: 'Stadium Operations', phone: MEDICAL_STATION_PHONE },
-        ],
-      });
+    if (detectPromptInjection(description)) {
+      return NextResponse.json({ error: 'Description contains inappropriate content' }, { status: 400 });
     }
 
-    if (action === 'lost_child') {
-      const parsed = lostChildSchema.safeParse(body);
+    const sanitizedLocation = sanitizeInput(location);
+    const sanitizedDescription = sanitizeInput(description);
 
-      if (!parsed.success) {
-        return NextResponse.json({ error: 'Please provide complete information about the child' }, { status: 400 });
-      }
+    const protocols: Record<string, { protocol: string; steps: string[]; estimatedResponse: string }> = {
+      medical: {
+        protocol: 'Medical Emergency Response',
+        steps: ['Alert nearest medical team', 'Dispatch first aid to location', 'Prepare ambulance access route', 'Notify incident command'],
+        estimatedResponse: '2-4 minutes',
+      },
+      fire: {
+        protocol: 'Fire Emergency Protocol',
+        steps: ['Activate fire alarm system', 'Deploy evacuation for affected zone', 'Alert fire department', 'Open emergency exits in section'],
+        estimatedResponse: '1-3 minutes',
+      },
+      security: {
+        protocol: 'Security Incident Response',
+        steps: ['Alert security command center', 'Deploy nearby security personnel', 'Secure the area', 'Notify law enforcement if needed'],
+        estimatedResponse: '1-2 minutes',
+      },
+      weather: {
+        protocol: 'Severe Weather Protocol',
+        steps: ['Monitor weather conditions', 'Alert all staff via radio', 'Prepare shelter-in-place areas', 'PA announcement for fan safety'],
+        estimatedResponse: 'Immediate',
+      },
+      lost_person: {
+        protocol: 'Lost Person Protocol',
+        steps: ['Broadcast description on PA', 'Deploy staff to last known location', 'Check all exit points', 'Contact security at all gates'],
+        estimatedResponse: '3-5 minutes',
+      },
+      structural: {
+        protocol: 'Structural Incident Protocol',
+        steps: ['Evacuate affected section immediately', 'Alert structural engineering team', 'Assess structural integrity', 'Redirect fans to alternate sections'],
+        estimatedResponse: '1-2 minutes',
+      },
+    };
 
-      const safeName = sanitizeInput(parsed.data.childName).slice(0, 100);
-      const safeDesc = sanitizeInput(parsed.data.childDescription).slice(0, 500);
-      const safeLocation = sanitizeInput(parsed.data.lastSeenLocation).slice(0, 200);
-      const safeGuardian = sanitizeInput(parsed.data.guardianName).slice(0, 100);
-      const safeContact = sanitizeInput(parsed.data.guardianContact).slice(0, 50);
-      if (detectPromptInjection(safeName) || detectPromptInjection(safeDesc) || detectPromptInjection(safeLocation)) {
-        return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
-      }
+    const response = protocols[type] || protocols.medical;
 
-      const report = {
-        id: crypto.randomUUID(),
-        action: 'lost_child' as const,
-        childName: safeName,
-        childAge: parsed.data.childAge,
-        childDescription: safeDesc,
-        lastSeenLocation: safeLocation,
-        guardianName: safeGuardian,
-        guardianContact: safeContact,
-        status: 'active' as const,
-        timestamp: Date.now(),
-      };
-      const prompt = `A child has been reported lost at MetLife Stadium. Name: ${safeName}, Age: ${parsed.data.childAge}, Description: ${safeDesc}, Last seen: ${safeLocation}. Provide immediate response protocol for lost child procedures at a major sporting venue.`;
-      const protocol = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
+    let weatherContext: WeatherData | null = null;
+    try {
+      weatherContext = await fetchWeather(VENUES[0].lat, VENUES[0].lon);
+    } catch { /* continue */ }
 
-      return NextResponse.json({ report, protocol: stripMarkdown(protocol) });
-    }
+    const weatherImpact = weatherContext ? getWeatherImpact(weatherContext) : null;
 
-    if (action === 'report') {
-      const parsed = emergencyReportSchema.safeParse(body);
-      if (!parsed.success) {
-        return NextResponse.json({ error: 'Invalid report data' }, { status: 400 });
-      }
+    const needsWeatherAlert = type === 'weather' || (weatherContext && weatherContext.weatherCode >= 95);
 
-      const safeDesc = sanitizeInput(parsed.data.description).slice(0, 500);
-      if (detectPromptInjection(safeDesc)) {
-        return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
-      }
-
-      const report = {
-        id: crypto.randomUUID(),
-        type: parsed.data.type,
-        severity: parsed.data.severity,
-        description: safeDesc,
-        latitude: parsed.data.latitude,
-        longitude: parsed.data.longitude,
-        reportedBy: clientId,
-        timestamp: Date.now(),
-        status: 'reported' as const,
-        responders: [],
-      };
-      const prompt = `Emergency report filed: Type: ${parsed.data.type}, Severity: ${parsed.data.severity}, Description: ${safeDesc}. Provide initial response assessment and recommended actions.`;
-      const assessment = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
-
-      return NextResponse.json({ report, assessment: stripMarkdown(assessment) });
-    }
-
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (error) {
-    console.error('Emergency API error:', error);
-    return NextResponse.json(
-      { error: 'Emergency system error. Call 911 for immediate assistance.' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      incident: {
+        id: `EMG-${Date.now()}`,
+        type,
+        severity,
+        location: sanitizedLocation,
+        description: sanitizedDescription,
+        status: 'reported',
+        timestamp: new Date().toISOString(),
+      },
+      responseProtocol: {
+        ...response,
+        priority: severity === 'critical' ? 'IMMEDIATE' : severity === 'high' ? 'URGENT' : 'STANDARD',
+      },
+      weatherContext: needsWeatherAlert ? {
+        condition: weatherContext?.condition,
+        temperature: weatherContext ? Math.round(weatherContext.temperature) : null,
+        alert: weatherImpact?.safetyNotes || [],
+        recommendation: weatherImpact?.crowdImpact || 'Monitor conditions',
+      } : null,
+      nextSteps: [
+        'Emergency services have been notified',
+        'Stay at a safe distance from the incident',
+        'Follow staff instructions',
+        `Estimated response time: ${response.estimatedResponse}`,
+      ],
+    }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch {
+    return NextResponse.json({ error: 'Failed to process emergency report' }, { status: 500 });
   }
 }

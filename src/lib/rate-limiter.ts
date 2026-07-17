@@ -2,7 +2,7 @@ import { checkRateLimit } from '@/utils/security';
 import { RATE_LIMIT } from '@/constants';
 import { NextResponse } from 'next/server';
 
-export type RateLimitType = 'chat' | 'api' | 'emergency';
+export type RateLimitType = 'chat' | 'api' | 'emergency' | 'navigation' | 'crowd' | 'transport' | 'sustainability' | 'operations' | 'volunteer';
 
 export function rateLimit(
   identifier: string,

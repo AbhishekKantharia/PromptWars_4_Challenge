@@ -55,4 +55,10 @@ export const RATE_LIMIT = {
   chat: { maxRequests: 30, windowMs: 60000 },
   api: { maxRequests: 100, windowMs: 60000 },
   emergency: { maxRequests: 5, windowMs: 300000 },
+  navigation: { maxRequests: 60, windowMs: 60000 },
+  crowd: { maxRequests: 60, windowMs: 60000 },
+  transport: { maxRequests: 60, windowMs: 60000 },
+  sustainability: { maxRequests: 30, windowMs: 60000 },
+  operations: { maxRequests: 60, windowMs: 60000 },
+  volunteer: { maxRequests: 30, windowMs: 60000 },
 } as const;
