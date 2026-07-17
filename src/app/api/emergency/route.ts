@@ -7,6 +7,25 @@ import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
 import { EMERGENCY_PHONE, MEDICAL_STATION_PHONE } from '@/constants';
 import { detectPromptInjection, sanitizeInput } from '@/utils/security';
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/^\s*>\s+/gm, '')
+    .replace(/---+/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const lostChildSchema = z.object({
   action: z.literal('lost_child'),
   childName: z.string().min(1),
@@ -109,7 +128,7 @@ export async function POST(request: NextRequest) {
       const prompt = `A child has been reported lost at MetLife Stadium. Name: ${safeName}, Age: ${parsed.data.childAge}, Description: ${safeDesc}, Last seen: ${safeLocation}. Provide immediate response protocol for lost child procedures at a major sporting venue.`;
       const protocol = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
 
-      return NextResponse.json({ report, protocol });
+      return NextResponse.json({ report, protocol: stripMarkdown(protocol) });
     }
 
     if (action === 'report') {
@@ -138,7 +157,7 @@ export async function POST(request: NextRequest) {
       const prompt = `Emergency report filed: Type: ${parsed.data.type}, Severity: ${parsed.data.severity}, Description: ${safeDesc}. Provide initial response assessment and recommended actions.`;
       const assessment = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
 
-      return NextResponse.json({ report, assessment });
+      return NextResponse.json({ report, assessment: stripMarkdown(assessment) });
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

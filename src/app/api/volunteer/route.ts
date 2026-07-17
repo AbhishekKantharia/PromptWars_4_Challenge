@@ -5,6 +5,25 @@ import { VOLUNTEER_KB_PROMPT } from '@/constants/prompts';
 import { detectPromptInjection, sanitizeInput } from '@/utils/security';
 import { z } from 'zod';
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/^\s*>\s+/gm, '')
+    .replace(/---+/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const VOLUNTEER_TASKS = [
   { id: 't-1', title: 'Gate N1 Usher', description: 'Assist fans entering through North Gate 1. Check tickets, direct to sections.', location: 'North Gate 1', priority: 'high' as const, status: 'pending' as const, startTime: '14:00', endTime: '16:00', requiredSkills: ['customer_service'] },
   { id: 't-2', title: 'Food Court Monitor', description: 'Monitor food court cleanliness and report maintenance needs.', location: 'Main Food Court', priority: 'medium' as const, status: 'pending' as const, startTime: '15:00', endTime: '18:00', requiredSkills: ['attention_to_detail'] },
@@ -80,7 +99,7 @@ export async function POST(request: NextRequest) {
         console.warn('Gemini unavailable for volunteer KB, using fallback:', error);
         answer = 'I can help with general volunteer information. Common tasks include ushering, food court monitoring, accessibility guiding, and first aid support. For specific questions, please contact your shift supervisor.';
       }
-      return NextResponse.json({ answer });
+      return NextResponse.json({ answer: stripMarkdown(answer) });
     }
 
     if (body.action === 'report') {

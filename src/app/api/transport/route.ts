@@ -3,6 +3,25 @@ import { generateText } from '@/lib/gemini';
 import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
 import { z } from 'zod';
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+\.\s+/gm, '')
+    .replace(/^\s*>\s+/gm, '')
+    .replace(/---+/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const transportQuerySchema = z.object({
   type: z.enum(['metro', 'bus', 'taxi', 'rideshare', 'parking', 'walking']).optional(),
   latitude: z.coerce.number().optional(),
@@ -43,7 +62,7 @@ export async function GET(request: NextRequest) {
     let recommendation = 'Public transit is recommended for match days. Metro runs every 8 minutes to MetLife Stadium Station. Arrive early to avoid congestion. Parking lots fill up 2 hours before kickoff.';
     try {
       const prompt = `Based on the following transport data for MetLife Stadium on a match day, provide helpful recommendations to a fan. Data: ${JSON.stringify(data)}. Include specific departure times and tips.`;
-      recommendation = await generateText(prompt);
+      recommendation = stripMarkdown(await generateText(prompt));
     } catch (error) {
       console.warn('Gemini unavailable for transport recommendations, using fallback:', error);
     }
