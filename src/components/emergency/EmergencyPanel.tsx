@@ -9,10 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 
+interface EmergencyResult {
+  success: boolean;
+  incident: { id: string; type: string; severity: string; location: string; description: string; status: string; timestamp: string };
+  responseProtocol: { protocol: string; steps: string[]; estimatedResponse: string; priority: string };
+  weatherContext: { condition: string; temperature: number; alert: string[]; recommendation: string } | null;
+  nextSteps: string[];
+}
+
 export function EmergencyPanel() {
   const { location } = useGeolocation();
   const [sosLoading, setSosLoading] = useState(false);
-  const [sosResult, setSosResult] = useState<{ message: string; instructions: string[]; emergencyContacts: { name: string; phone: string }[] } | null>(null);
+  const [sosResult, setSosResult] = useState<EmergencyResult | null>(null);
   const [showLostChild, setShowLostChild] = useState(false);
   const [lostChildForm, setLostChildForm] = useState({ childName: '', childAge: '', childDescription: '', lastSeenLocation: '', guardianName: '', guardianContact: '' });
   const [lostChildResult, setLostChildResult] = useState('');
@@ -28,10 +36,10 @@ export function EmergencyPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'sos',
-          latitude: location?.latitude ?? 40.8128,
-          longitude: location?.longitude ?? -74.0745,
-          type: 'personal',
+          type: 'medical',
+          severity: 'critical',
+          location: `Section near ${location?.latitude?.toFixed(4) || '40.8128'}, ${location?.longitude?.toFixed(4) || '-74.0745'}`,
+          description: 'Emergency SOS activated by fan. Immediate assistance required at this location.',
         }),
       });
       const data = await res.json();
@@ -41,16 +49,21 @@ export function EmergencyPanel() {
   };
 
   const handleLostChild = async () => {
-    if (!lostChildForm.childName || !lostChildForm.childAge || !lostChildForm.childDescription || !lostChildForm.lastSeenLocation || !lostChildForm.guardianName || !lostChildForm.guardianContact) return;
+    if (!lostChildForm.childName || !lostChildForm.childDescription || !lostChildForm.lastSeenLocation) return;
     setLostChildLoading(true);
     try {
       const res = await fetch(apiUrl('/api/emergency'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'lost_child', ...lostChildForm, childAge: parseInt(lostChildForm.childAge) }),
+        body: JSON.stringify({
+          type: 'lost_person',
+          severity: 'high',
+          location: lostChildForm.lastSeenLocation,
+          description: `Lost child: ${lostChildForm.childName}, age ${lostChildForm.childAge || 'unknown'}. Description: ${lostChildForm.childDescription}. Guardian: ${lostChildForm.guardianName || 'unknown'}, Contact: ${lostChildForm.guardianContact || 'unknown'}.`,
+        }),
       });
       const data = await res.json();
-      setLostChildResult(data.protocol || 'Report submitted. Security team has been notified.');
+      setLostChildResult(data.responseProtocol?.protocol || 'Report submitted. Security team has been notified.');
       setShowLostChild(false);
     } catch (err) { console.error(err); }
     finally { setLostChildLoading(false); }
@@ -64,11 +77,9 @@ export function EmergencyPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'report',
           type: reportType,
           severity: 'medium',
-          latitude: location?.latitude ?? 40.8128,
-          longitude: location?.longitude ?? -74.0745,
+          location: `Section near ${location?.latitude?.toFixed(4) || '40.8128'}, ${location?.longitude?.toFixed(4) || '-74.0745'}`,
           description: reportDesc,
         }),
       });
@@ -99,21 +110,27 @@ export function EmergencyPanel() {
 
       {sosResult && (
         <Card className="border-fifa-red/30 bg-fifa-red/5" role="alert" aria-live="assertive">
-          <CardHeader><CardTitle className="text-fifa-red">Emergency Active</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-fifa-red">{sosResult.responseProtocol.protocol}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-sm text-fifa-white">{sosResult.message}</p>
+            <div className="flex items-center gap-3">
+              <Badge variant="danger">{sosResult.responseProtocol.priority}</Badge>
+              <span className="text-sm text-fifa-gray">Response: {sosResult.responseProtocol.estimatedResponse}</span>
+            </div>
             <ol className="space-y-2">
-              {sosResult.instructions.map((inst: string, i: number) => (
+              {sosResult.responseProtocol.steps.map((step: string, i: number) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-fifa-silver">
-                  <Badge variant="danger">{i + 1}</Badge>{inst}
+                  <Badge variant="danger">{i + 1}</Badge>{step}
                 </li>
               ))}
             </ol>
-            <div className="flex gap-3 pt-2">
-              {sosResult.emergencyContacts?.map((c: { name: string; phone: string }) => (
-                <a key={c.phone} href={`tel:${c.phone}`} className="rounded-xl border border-fifa-red/30 px-4 py-2 text-sm text-fifa-red hover:bg-fifa-red/10 transition-all" aria-label={`Call ${c.name} at ${c.phone}`}>
-                  Call {c.name}: {c.phone}
-                </a>
+            {sosResult.weatherContext && (
+              <div className="p-2 rounded bg-fifa-accent/10 border border-fifa-accent/20">
+                <p className="text-xs text-fifa-accent">{sosResult.weatherContext.condition} — {sosResult.weatherContext.recommendation}</p>
+              </div>
+            )}
+            <div className="space-y-1">
+              {sosResult.nextSteps.map((step, i) => (
+                <p key={i} className="text-xs text-fifa-gray">• {step}</p>
               ))}
             </div>
           </CardContent>

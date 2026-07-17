@@ -7,58 +7,105 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
-interface TransportData {
-  metro: { id: string; name: string; provider: string; frequency: string; accessible: boolean; distance: string }[];
-  bus: { id: string; name: string; provider: string; frequency: string; accessible: boolean; route: string }[];
-  parking: { id: string; name: string; totalSpaces: number; available: number; pricePerHour: number; accessible: boolean; evCharging: boolean; walkTime: string }[];
-  traffic: { level: string; estimatedDelay: number; recommendation: string };
+interface TransitStop {
+  name: string;
+  distance: number;
+  operator?: string;
+  type: string;
+  walkTimeMinutes: number;
+  frequencyMinutes: number;
+  status: string;
 }
 
-const TABS = ['metro', 'bus', 'parking'] as const;
+interface ParkingLot {
+  name: string;
+  spaces: number;
+  price: string;
+  status: string;
+}
+
+interface TransportOption {
+  type: string;
+  name: string;
+  status: string;
+  frequency?: string;
+  walkTime?: string;
+  capacity?: string;
+  recommendation?: string;
+  nearestStops?: TransitStop[];
+  pickupZone?: string;
+  estimatedWait?: string;
+  surgeEstimate?: string;
+  lots?: ParkingLot[];
+}
+
+interface TransportData {
+  venue: { id: string; name: string; city: string };
+  transportOptions: TransportOption[];
+  trafficConditions: { congestionLevel: string; estimatedDelays: string; bestRoute: string; alternativeRoutes: string[] };
+  transitStops: TransitStop[];
+  weatherSummary: { condition: string; temperature: number; impact: string } | null;
+  matchDayTips: string[];
+  lastUpdated: string;
+}
+
+const TABS = ['transit', 'rideshare', 'parking'] as const;
 
 export function TransportAssistant() {
   const [data, setData] = useState<TransportData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'metro' | 'bus' | 'parking'>('metro');
-  const [aiRec, setAiRec] = useState('');
+  const [activeTab, setActiveTab] = useState<'transit' | 'rideshare' | 'parking'>('transit');
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(apiUrl('/api/transport'))
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((d) => { setData(d.transport); setAiRec(d.recommendation || ''); setLoading(false); })
-      .catch((err) => { console.error(err); setFetchError('Failed to load transport data'); setLoading(false); });
+    fetch(apiUrl('/api/transport?venue=metlife'))
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(setData)
+      .catch((err) => { console.error(err); setFetchError('Failed to load transport data'); })
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <CardContent className="flex justify-center py-12"><LoadingSpinner /></CardContent>;
   if (fetchError) return <CardContent className="py-8 text-center"><p className="text-fifa-red">{fetchError}</p></CardContent>;
   if (!data) return null;
 
+  const { trafficConditions, transitStops, transportOptions, weatherSummary } = data;
+  const transit = transportOptions.find(o => o.type === 'transit');
+  const rideshare = transportOptions.find(o => o.type === 'rideshare');
+  const parking = transportOptions.find(o => o.type === 'parking');
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="text-center py-4">
-            <Badge variant={data.traffic.level === 'moderate' ? 'warning' : 'success'} className="text-sm">{data.traffic.level}</Badge>
+            <Badge variant={trafficConditions.congestionLevel === 'heavy' ? 'danger' : trafficConditions.congestionLevel === 'moderate' ? 'warning' : 'success'} className="text-sm">{trafficConditions.congestionLevel}</Badge>
             <p className="text-xs text-fifa-gray mt-2">Traffic Level</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="text-center py-4">
-            <p className="text-2xl font-bold text-fifa-white">+{data.traffic.estimatedDelay}min</p>
-            <p className="text-xs text-fifa-gray mt-1">Estimated Delay</p>
+            <p className="text-lg font-bold text-fifa-white">{trafficConditions.estimatedDelays}</p>
+            <p className="text-xs text-fifa-gray mt-1">Estimated Delays</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="text-center py-4">
-            <p className="text-2xl font-bold text-fifa-green">{data.parking.reduce((s, p) => s + p.available, 0).toLocaleString()}</p>
-            <p className="text-xs text-fifa-gray mt-1">Parking Spots</p>
+            <p className="text-2xl font-bold text-fifa-green">{transitStops.length}</p>
+            <p className="text-xs text-fifa-gray mt-1">Nearby Stops</p>
           </CardContent>
         </Card>
       </div>
+
+      {weatherSummary && (
+        <Card>
+          <CardContent className="py-3 flex items-center gap-6 text-sm">
+            <span className="text-fifa-white">{weatherSummary.condition}</span>
+            <span className="text-fifa-gray">{weatherSummary.temperature}°C</span>
+            <span className="text-fifa-accent">{weatherSummary.impact}</span>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex gap-2" role="tablist" aria-label="Transport type">
         {TABS.map((tab) => (
@@ -68,61 +115,68 @@ export function TransportAssistant() {
         ))}
       </div>
 
-      {activeTab === 'metro' && (
-        <div id="panel-metro" role="tabpanel"><Card><CardHeader><CardTitle>Metro / Rail</CardTitle></CardHeader><CardContent>
+      {activeTab === 'transit' && (
+        <div id="panel-transit" role="tabpanel"><Card><CardHeader><CardTitle>Public Transit</CardTitle></CardHeader><CardContent>
+          {transit && <p className="text-sm text-fifa-accent mb-3">{transit.frequency} — {transit.recommendation}</p>}
           <div className="space-y-3">
-            {data.metro.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
-                <div><p className="font-medium text-fifa-white">{m.name}</p><p className="text-xs text-fifa-gray">{m.provider} · {m.distance}</p></div>
+            {transitStops.map((stop, i) => (
+              <div key={i} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
+                <div>
+                  <p className="font-medium text-fifa-white">{stop.name}</p>
+                  <p className="text-xs text-fifa-gray">{stop.operator || stop.type} · {stop.distance}m away</p>
+                </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="info">Every {m.frequency}</Badge>
-                  {m.accessible && <Badge variant="success">♿</Badge>}
+                  <Badge variant="info">Every {stop.frequencyMinutes}min</Badge>
+                  <span className="text-xs text-fifa-gray">{stop.walkTimeMinutes}min walk</span>
                 </div>
               </div>
             ))}
+            {transitStops.length === 0 && <p className="text-sm text-fifa-gray text-center py-4">No transit stops found nearby</p>}
           </div>
         </CardContent></Card></div>
       )}
 
-      {activeTab === 'bus' && (
-        <div id="panel-bus" role="tabpanel"><Card><CardHeader><CardTitle>Bus Services</CardTitle></CardHeader><CardContent>
-          <div className="space-y-3">
-            {data.bus.map((b) => (
-              <div key={b.id} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
-                <div><p className="font-medium text-fifa-white">{b.name}</p><p className="text-xs text-fifa-gray">{b.route}</p></div>
-                <Badge variant="info">Every {b.frequency}</Badge>
+      {activeTab === 'rideshare' && (
+        <div id="panel-rideshare" role="tabpanel"><Card><CardHeader><CardTitle>Ride-Share</CardTitle></CardHeader><CardContent>
+          {rideshare && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-glass-border bg-white/5 px-4 py-3">
+                <p className="font-medium text-fifa-white">{rideshare.name}</p>
+                <p className="text-xs text-fifa-gray mt-1">Pickup: {rideshare.pickupZone}</p>
+                <p className="text-xs text-fifa-gray">Wait: {rideshare.estimatedWait}</p>
+                <p className="text-xs text-fifa-accent mt-1">{rideshare.surgeEstimate}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </CardContent></Card></div>
       )}
 
       {activeTab === 'parking' && (
         <div id="panel-parking" role="tabpanel"><Card><CardHeader><CardTitle>Parking</CardTitle></CardHeader><CardContent>
-          <div className="space-y-3">
-            {data.parking.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
-                <div>
-                  <p className="font-medium text-fifa-white">{p.name}</p>
-                  <p className="text-xs text-fifa-gray">${p.pricePerHour}/hr · Walk: {p.walkTime}</p>
+          {parking?.lots && (
+            <div className="space-y-3">
+              {parking.lots.map((lot, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
+                  <div>
+                    <p className="font-medium text-fifa-white">{lot.name}</p>
+                    <p className="text-xs text-fifa-gray">{lot.price}</p>
+                  </div>
+                  <Badge variant={lot.status === 'Open' ? 'success' : 'warning'}>{lot.spaces} spots — {lot.status}</Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={p.available > 100 ? 'success' : 'danger'}>{p.available} spots</Badge>
-                  {p.evCharging && <Badge variant="info">EV</Badge>}
-                  {p.accessible && <Badge variant="success">♿</Badge>}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent></Card></div>
       )}
 
-      {aiRec && (
-        <Card>
-          <CardHeader><CardTitle>AI Transport Advice</CardTitle></CardHeader>
-          <CardContent><p className="text-sm text-fifa-silver whitespace-pre-wrap">{aiRec}</p></CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader><CardTitle>Match Day Tips</CardTitle></CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-fifa-silver">
+            {data.matchDayTips.map((tip, i) => <li key={i} className="flex items-start gap-2"><span className="text-fifa-accent">•</span>{tip}</li>)}
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }

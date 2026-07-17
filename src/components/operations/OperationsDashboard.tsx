@@ -7,12 +7,19 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface OpsData {
-  crowd: { totalAttendance: number; capacity: number; occupancyPercent: number; peakZone: string; averageWaitTime: number; activeAlerts: number };
-  incidents: { total: number; active: number; resolved: number; critical: number; averageResponseTime: number };
-  volunteers: { total: number; onDuty: number; onBreak: number; tasksPending: number; tasksCompleted: number };
-  transport: { metroLoad: number; busLoad: number; parkingAvailable: number; trafficLevel: string };
-  weather: { temperature: number; condition: string; humidity: number; windSpeed: number; uvIndex: number; alerts: string[] };
-  aiSummary: string;
+  venue: { id: string; name: string; capacity: number };
+  currentAttendance: number;
+  operationsSummary: {
+    venueStatus: string; gatesOpen: boolean; matchInProgress: boolean;
+    emergencyExitTested: boolean; fireSystemStatus: string; cctvStatus: string;
+    powerStatus: string; currentPhase: string; incidentCount: number; staffDeployed: number;
+  };
+  weather: { condition: string; temperature: number; humidity: number; windSpeed: number; precipitation: number; visibility: number; impact: { crowdImpact: string; transportImpact: string; safetyNotes: string[] } } | null;
+  incidents: { type: string; severity: string; section: string; timestamp: string; status: string }[];
+  staffAllocation: { role: string; count: number; status: string; sections: string }[];
+  nearbyMedicalFacilities: { name: string; distance: number }[];
+  systemHealth: { network: string; wifi: string; signage: string; accessControl: string; videoDisplay: string };
+  lastUpdated: string;
 }
 
 export function OperationsDashboard() {
@@ -21,11 +28,8 @@ export function OperationsDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(apiUrl('/api/operations'))
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+    fetch(apiUrl('/api/operations?venue=metlife'))
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(setData)
       .catch((err) => { console.error(err); setFetchError('Failed to load operations data'); })
       .finally(() => setLoading(false));
@@ -35,72 +39,98 @@ export function OperationsDashboard() {
   if (fetchError) return <CardContent className="py-8 text-center"><p className="text-fifa-red">{fetchError}</p></CardContent>;
   if (!data) return null;
 
+  const { operationsSummary: ops, incidents, staffAllocation, weather, systemHealth } = data;
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card><CardContent className="text-center py-4">
-          <div className="text-2xl font-bold text-fifa-white">{data.crowd.occupancyPercent}%</div>
-          <p className="text-xs text-fifa-gray mt-1">Venue Occupancy</p>
+          <Badge variant={ops.venueStatus === 'Operational' ? 'success' : 'danger'} className="text-sm">{ops.venueStatus}</Badge>
+          <p className="text-xs text-fifa-gray mt-2">Venue Status</p>
         </CardContent></Card>
         <Card><CardContent className="text-center py-4">
-          <div className="text-2xl font-bold text-fifa-white">{data.crowd.totalAttendance.toLocaleString()}</div>
-          <p className="text-xs text-fifa-gray mt-1">Total Attendance</p>
+          <div className="text-2xl font-bold text-fifa-white">{data.currentAttendance.toLocaleString()}</div>
+          <p className="text-xs text-fifa-gray mt-1">Current Attendance</p>
         </CardContent></Card>
         <Card><CardContent className="text-center py-4">
-          <Badge variant={data.incidents.critical > 0 ? 'danger' : 'success'} className="text-sm">{data.incidents.active} Active</Badge>
+          <Badge variant={incidents.length > 0 ? 'warning' : 'success'} className="text-sm">{incidents.length} Active</Badge>
           <p className="text-xs text-fifa-gray mt-2">Incidents</p>
         </CardContent></Card>
         <Card><CardContent className="text-center py-4">
-          <div className="text-2xl font-bold text-fifa-green">{data.volunteers.onDuty}/{data.volunteers.total}</div>
-          <p className="text-xs text-fifa-gray mt-1">Volunteers On Duty</p>
+          <div className="text-2xl font-bold text-fifa-green">{ops.staffDeployed}</div>
+          <p className="text-xs text-fifa-gray mt-1">Staff Deployed</p>
         </CardContent></Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader><CardTitle>Crowd Status</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Operations</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-fifa-gray">Peak Zone</span><span className="text-fifa-white">{data.crowd.peakZone}</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Avg Wait</span><span className="text-fifa-white">{data.crowd.averageWaitTime} min</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Active Alerts</span><Badge variant={data.crowd.activeAlerts > 0 ? 'warning' : 'success'}>{data.crowd.activeAlerts}</Badge></div>
+            <div className="flex justify-between"><span className="text-fifa-gray">Phase</span><span className="text-fifa-white">{ops.currentPhase}</span></div>
+            <div className="flex justify-between"><span className="text-fifa-gray">Gates Open</span><Badge variant={ops.gatesOpen ? 'success' : 'default'}>{ops.gatesOpen ? 'Yes' : 'No'}</Badge></div>
+            <div className="flex justify-between"><span className="text-fifa-gray">Match In Progress</span><Badge variant={ops.matchInProgress ? 'success' : 'default'}>{ops.matchInProgress ? 'Yes' : 'No'}</Badge></div>
+            <div className="flex justify-between"><span className="text-fifa-gray">Power</span><span className="text-fifa-white">{ops.powerStatus}</span></div>
+          </CardContent>
+        </Card>
+
+        {weather && (
+          <Card>
+            <CardHeader><CardTitle>Weather</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-fifa-gray">Temperature</span><span className="text-fifa-white">{weather.temperature}°C</span></div>
+              <div className="flex justify-between"><span className="text-fifa-gray">Condition</span><span className="text-fifa-white">{weather.condition}</span></div>
+              <div className="flex justify-between"><span className="text-fifa-gray">Humidity</span><span className="text-fifa-white">{weather.humidity}%</span></div>
+              <div className="flex justify-between"><span className="text-fifa-gray">Wind</span><span className="text-fifa-white">{weather.windSpeed} km/h</span></div>
+              {weather.impact.safetyNotes.length > 0 && (
+                <div className="mt-2 p-2 rounded bg-fifa-red/10 border border-fifa-red/20">
+                  {weather.impact.safetyNotes.map((note, i) => <p key={i} className="text-xs text-fifa-red">{note}</p>)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader><CardTitle>System Health</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {Object.entries(systemHealth).map(([key, val]) => (
+              <div key={key} className="flex justify-between">
+                <span className="text-fifa-gray capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                <Badge variant={val === 'Operational' ? 'success' : 'warning'}>{val}</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Transport Status</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Staff Allocation</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-fifa-gray">Metro Load</span><span className="text-fifa-white">{data.transport.metroLoad}%</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Bus Load</span><span className="text-fifa-white">{data.transport.busLoad}%</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Parking Available</span><span className="text-fifa-green">{data.transport.parkingAvailable.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Traffic</span><Badge variant="warning">{data.transport.trafficLevel}</Badge></div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Weather</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-fifa-gray">Temperature</span><span className="text-fifa-white">{data.weather.temperature}°C</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Condition</span><span className="text-fifa-white">{data.weather.condition}</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Humidity</span><span className="text-fifa-white">{data.weather.humidity}%</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">UV Index</span><span className="text-fifa-white">{data.weather.uvIndex}</span></div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Incident Summary</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-fifa-gray">Total</span><span className="text-fifa-white">{data.incidents.total}</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Resolved</span><span className="text-fifa-green">{data.incidents.resolved}</span></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Critical</span><Badge variant="danger">{data.incidents.critical}</Badge></div>
-            <div className="flex justify-between"><span className="text-fifa-gray">Avg Response</span><span className="text-fifa-white">{data.incidents.averageResponseTime} min</span></div>
+            {staffAllocation.map((s, i) => (
+              <div key={i} className="flex justify-between">
+                <span className="text-fifa-gray">{s.role}</span>
+                <span className="text-fifa-white">{s.count} — <Badge variant={s.status === 'Deployed' || s.status === 'Active' ? 'success' : 'default'}>{s.status}</Badge></span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
 
-      {data.aiSummary && (
+      {incidents.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>AI Operations Summary</CardTitle></CardHeader>
-          <CardContent><p className="text-sm text-fifa-silver whitespace-pre-wrap">{data.aiSummary}</p></CardContent>
+          <CardHeader><CardTitle>Active Incidents</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {incidents.map((inc, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-glass-border bg-white/5 px-4 py-3">
+                  <Badge variant={inc.severity === 'critical' ? 'danger' : inc.severity === 'high' ? 'warning' : 'default'}>{inc.severity}</Badge>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-fifa-white">{inc.type}</p>
+                    <p className="text-xs text-fifa-gray">{inc.section} — {inc.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
         </Card>
       )}
     </div>

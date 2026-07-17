@@ -8,13 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { useAccessibility } from '@/contexts/AccessibilityContext';
-import type { NavigationRoute } from '@/types/navigation';
-
-interface RouteInstruction {
-  step: number;
-  text: string;
-}
 
 interface MapSection {
   id: string;
@@ -27,6 +20,15 @@ interface MapSection {
   density: number;
   capacity: number;
   occupancy: number;
+}
+
+interface NavResult {
+  venue: { id: string; name: string; address: string; capacity: number; city: string };
+  userLocation: { latitude: number; longitude: number; distanceToVenueMeters: number; walkTimeMinutes: number };
+  weather: { condition: string; temperature: number; humidity: number; windSpeed: number; uvIndex: number; precipitation: number; visibility: number } | null;
+  weatherImpact: { crowdImpact: string; transportImpact: string; safetyNotes: string[] } | null;
+  nearbyAmenities: { restrooms: { name: string; distance: number }[]; restaurants: { name: string; distance: number }[] };
+  navigationTips: string[];
 }
 
 const STADIUM_SECTIONS: MapSection[] = [
@@ -65,11 +67,9 @@ function getDensityColor(density: number): string {
 
 export function VenueMap() {
   const { location } = useGeolocation();
-  const { preferences } = useAccessibility();
   const [selectedDest, setSelectedDest] = useState('');
   const [customDest, setCustomDest] = useState('');
-  const [route, setRoute] = useState<NavigationRoute | null>(null);
-  const [alternatives, setAlternatives] = useState<{ name: string; distance: number; walkTime: number; accessible: boolean }[]>([]);
+  const [navResult, setNavResult] = useState<NavResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const [sections, setSections] = useState(STADIUM_SECTIONS);
@@ -93,24 +93,19 @@ export function VenueMap() {
     setSelectedDest(destination);
     try {
       const params = new URLSearchParams({
-        latitude: String(location?.latitude ?? 40.8128),
-        longitude: String(location?.longitude ?? -74.0745),
-        destination,
-        accessible: String(preferences.wheelchairUser),
-        crowdAware: 'true',
+        lat: String(location?.latitude ?? 40.8128),
+        lon: String(location?.longitude ?? -74.0745),
+        venue: 'metlife',
       });
       const res = await fetch(apiUrl(`/api/navigation?${params}`));
       const data = await res.json();
-      if (data.route) {
-        setRoute(data.route);
-        setAlternatives(data.alternatives || []);
-      }
+      setNavResult(data);
     } catch (err) {
       console.error('Navigation error:', err);
     } finally {
       setLoading(false);
     }
-  }, [location, preferences.wheelchairUser]);
+  }, [location]);
 
   return (
     <div className="space-y-4">
@@ -145,10 +140,7 @@ export function VenueMap() {
                 return (
                   <g key={section.id}>
                     <rect
-                      x={section.x}
-                      y={section.y}
-                      width={section.width}
-                      height={section.height}
+                      x={section.x} y={section.y} width={section.width} height={section.height}
                       rx={isPitch ? 8 : 4}
                       fill={isPitch ? 'url(#pitch-gradient)' : section.color}
                       opacity={isHovered || isSelected ? 1 : 0.75}
@@ -163,28 +155,11 @@ export function VenueMap() {
                     />
                     {section.width > 50 && section.height > 15 && (
                       <>
-                        <text
-                          x={section.x + section.width / 2}
-                          y={section.y + section.height / 2 - (section.capacity > 0 ? 4 : 0)}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fill="white"
-                          fontSize={section.capacity > 5000 ? 11 : 9}
-                          fontWeight="600"
-                          pointerEvents="none"
-                        >
+                        <text x={section.x + section.width / 2} y={section.y + section.height / 2 - (section.capacity > 0 ? 4 : 0)} textAnchor="middle" dominantBaseline="central" fill="white" fontSize={section.capacity > 5000 ? 11 : 9} fontWeight="600" pointerEvents="none">
                           {section.name}
                         </text>
                         {section.capacity > 0 && (
-                          <text
-                            x={section.x + section.width / 2}
-                            y={section.y + section.height / 2 + 12}
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            fill="rgba(255,255,255,0.7)"
-                            fontSize="9"
-                            pointerEvents="none"
-                          >
+                          <text x={section.x + section.width / 2} y={section.y + section.height / 2 + 12} textAnchor="middle" dominantBaseline="central" fill="rgba(255,255,255,0.7)" fontSize="9" pointerEvents="none">
                             {section.occupancy.toLocaleString()}/{section.capacity.toLocaleString()}
                           </text>
                         )}
@@ -235,9 +210,7 @@ export function VenueMap() {
 
             {location && (
               <div className="absolute top-3 right-3">
-                <Badge variant="success">
-                  📍 Live
-                </Badge>
+                <Badge variant="success">📍 Live</Badge>
               </div>
             )}
           </div>
@@ -245,9 +218,7 @@ export function VenueMap() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Where do you want to go?</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Where do you want to go?</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-2 mb-4">
             {DESTINATIONS.map((dest) => (
@@ -255,9 +226,7 @@ export function VenueMap() {
                 key={dest.id}
                 onClick={() => handleNavigate(dest.id)}
                 className={`flex flex-col items-center gap-1 rounded-xl border px-3 py-3 text-sm transition-all ${
-                  selectedDest === dest.id
-                    ? 'border-fifa-accent bg-fifa-accent/10 text-fifa-accent'
-                    : 'border-glass-border bg-white/5 text-fifa-silver hover:border-fifa-accent/30'
+                  selectedDest === dest.id ? 'border-fifa-accent bg-fifa-accent/10 text-fifa-accent' : 'border-glass-border bg-white/5 text-fifa-silver hover:border-fifa-accent/30'
                 }`}
                 aria-pressed={selectedDest === dest.id}
               >
@@ -266,83 +235,76 @@ export function VenueMap() {
               </button>
             ))}
           </div>
-
           <div className="flex gap-2">
-            <Input
-              value={customDest}
-              onChange={(e) => setCustomDest(e.target.value)}
-              placeholder="Or type a destination..."
-              aria-label="Custom destination"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleNavigate(customDest); }}
-            />
-            <Button variant="gold" onClick={() => handleNavigate(customDest)} disabled={!customDest}>
-              Go
-            </Button>
+            <Input value={customDest} onChange={(e) => setCustomDest(e.target.value)} placeholder="Or type a destination..." aria-label="Custom destination" onKeyDown={(e) => { if (e.key === 'Enter') handleNavigate(customDest); }} />
+            <Button variant="gold" onClick={() => handleNavigate(customDest)} disabled={!customDest}>Go</Button>
           </div>
         </CardContent>
       </Card>
 
       {loading && (
-        <Card>
-          <CardContent className="flex items-center justify-center py-8">
-            <LoadingSpinner />
-            <span className="ml-3 text-fifa-gray">Finding the best route...</span>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="flex items-center justify-center py-8"><LoadingSpinner /><span className="ml-3 text-fifa-gray">Finding the best route...</span></CardContent></Card>
       )}
 
-      {route && !loading && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Route to {route.destination?.name || selectedDest}
-              {route.accessible && <Badge variant="success">♿ Accessible</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-4 text-sm">
-              <div><span className="text-fifa-gray">Distance:</span> <span className="text-fifa-white font-semibold">{route.distance}m</span></div>
-              <div><span className="text-fifa-gray">Walk time:</span> <span className="text-fifa-white font-semibold">~{Math.round(route.estimatedTime / 60)} min</span></div>
-            </div>
-            {route.instructions && (
-              <ol className="space-y-2">
-                {(route.instructions as unknown as RouteInstruction[]).map((inst) => (
-                  <li key={inst.step} className="flex items-start gap-3 text-sm">
-                    <span className="h-6 w-6 rounded-full bg-fifa-accent/20 text-fifa-accent flex items-center justify-center text-xs font-bold flex-shrink-0">
-                      {inst.step}
-                    </span>
-                    <span className="text-fifa-silver">{inst.text}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {navResult && !loading && (
+        <>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2">📍 {navResult.venue.name}</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-fifa-gray">{navResult.venue.address}</p>
+              <div className="flex gap-4 text-sm">
+                <div><span className="text-fifa-gray">Distance:</span> <span className="text-fifa-white font-semibold">{navResult.userLocation.distanceToVenueMeters}m</span></div>
+                <div><span className="text-fifa-gray">Walk time:</span> <span className="text-fifa-white font-semibold">~{navResult.userLocation.walkTimeMinutes} min</span></div>
+              </div>
+              {navResult.weather && (
+                <div className="flex gap-4 text-sm p-2 rounded bg-white/5">
+                  <span className="text-fifa-white">{navResult.weather.condition}</span>
+                  <span className="text-fifa-gray">{navResult.weather.temperature}°C</span>
+                  <span className="text-fifa-gray">Wind: {navResult.weather.windSpeed} km/h</span>
+                  <span className="text-fifa-gray">UV: {navResult.weather.uvIndex}</span>
+                </div>
+              )}
+              {navResult.weatherImpact && navResult.weatherImpact.safetyNotes.length > 0 && (
+                <div className="p-2 rounded bg-fifa-accent/10 border border-fifa-accent/20">
+                  {navResult.weatherImpact.safetyNotes.map((note, i) => <p key={i} className="text-xs text-fifa-accent">{note}</p>)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      {alternatives.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Alternative Locations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {alternatives.map((alt, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleNavigate(alt.name.toLowerCase().split(' ')[0])}
-                  className="w-full flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3 text-left hover:border-fifa-accent/30 transition-all"
-                >
+          {(navResult.nearbyAmenities.restrooms.length > 0 || navResult.nearbyAmenities.restaurants.length > 0) && (
+            <Card>
+              <CardHeader><CardTitle>Nearby Amenities</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {navResult.nearbyAmenities.restrooms.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-fifa-white">{alt.name}</p>
-                    <p className="text-xs text-fifa-gray">{alt.distance}m · ~{Math.round(alt.walkTime / 60)} min walk</p>
+                    <p className="text-xs text-fifa-gray mb-2">🚻 Restrooms</p>
+                    {navResult.nearbyAmenities.restrooms.map((r, i) => (
+                      <div key={i} className="flex justify-between text-sm py-1"><span className="text-fifa-white">{r.name}</span><span className="text-fifa-gray">{r.distance}m</span></div>
+                    ))}
                   </div>
-                  {alt.accessible && <Badge variant="success">♿</Badge>}
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+                {navResult.nearbyAmenities.restaurants.length > 0 && (
+                  <div>
+                    <p className="text-xs text-fifa-gray mb-2">🍔 Food</p>
+                    {navResult.nearbyAmenities.restaurants.map((r, i) => (
+                      <div key={i} className="flex justify-between text-sm py-1"><span className="text-fifa-white">{r.name}</span><span className="text-fifa-gray">{r.distance}m</span></div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader><CardTitle>Navigation Tips</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-fifa-silver">
+                {navResult.navigationTips.map((tip, i) => <li key={i} className="flex items-start gap-2"><span className="text-fifa-accent">•</span>{tip}</li>)}
+              </ul>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
