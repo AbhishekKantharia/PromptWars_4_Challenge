@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --fifa-navy: #0a1628;
+    --fifa-dark: #0d1f3c;
+    --fifa-blue: #1a3a6b;
+    --fifa-accent: #c8a951;
+    --fifa-gold: #d4a843;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(200, 169, 81, 0.3) transparent;
+  }
+
+  *::-webkit-scrollbar { width: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(200, 169, 81, 0.3); border-radius: 3px; }
+
+  ::selection {
+    background: rgba(200, 169, 81, 0.3);
+    color: #f0f2f5;
+  }
+}
+
+@layer utilities {
+  .high-contrast {
+    --tw-bg-opacity: 1 !important;
+  }
+  .high-contrast * {
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    color: #ffffff !important;
+  }
+
+  .large-text {
+    font-size: 120% !important;
+  }
+
+  .colorblind-protanopia {
+    filter: url('#protanopia-filter');
+  }
+  .colorblind-deuteranopia {
+    filter: url('#deuteranopia-filter');
+  }
+  .colorblind-tritanopia {
+    filter: url('#tritanopia-filter');
+  }
+
+  .reduced-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 20px rgba(200, 169, 81, 0.15); }
+  50% { box-shadow: 0 0 40px rgba(200, 169, 81, 0.3); }
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+
+.stadium-bg {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(26, 58, 107, 0.4) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(200, 169, 81, 0.08) 0%, transparent 50%),
+    linear-gradient(180deg, #0a1628 0%, #061220 100%);
+}
