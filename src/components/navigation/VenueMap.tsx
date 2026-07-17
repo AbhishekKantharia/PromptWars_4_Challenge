@@ -72,10 +72,10 @@ export function VenueMap() {
           <CardTitle>Interactive Stadium Map</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative w-full h-[400px] rounded-xl overflow-hidden bg-fifa-navy border border-glass-border">
+          <div className="relative w-full h-[400px] rounded-xl overflow-hidden bg-fifa-navy border border-glass-border" role="img" aria-label="MetLife Stadium interactive map">
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center space-y-2">
-                <div className="text-6xl">🏟️</div>
+                <div className="text-6xl" aria-hidden="true">🏟️</div>
                 <p className="text-fifa-gray text-sm">MetLife Stadium — Interactive Map</p>
                 <p className="text-fifa-gray text-xs">Google Maps integration</p>
               </div>
@@ -107,6 +107,8 @@ export function VenueMap() {
                     ? 'border-fifa-accent bg-fifa-accent/10 text-fifa-accent'
                     : 'border-glass-border bg-white/5 text-fifa-silver hover:border-fifa-accent/30'
                 }`}
+                aria-pressed={selectedDest === dest.id}
+                role="button"
               >
                 <span className="text-xl" role="img" aria-hidden="true">{dest.icon}</span>
                 <span>{dest.label}</span>
@@ -119,6 +121,7 @@ export function VenueMap() {
               value={customDest}
               onChange={(e) => setCustomDest(e.target.value)}
               placeholder="Or type a destination..."
+              aria-label="Custom destination"
               onKeyDown={(e) => { if (e.key === 'Enter') handleNavigate(customDest); }}
             />
             <Button variant="gold" onClick={() => handleNavigate(customDest)} disabled={!customDest}>

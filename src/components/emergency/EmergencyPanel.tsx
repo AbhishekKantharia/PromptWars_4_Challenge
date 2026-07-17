@@ -41,6 +41,7 @@ export function EmergencyPanel() {
   };
 
   const handleLostChild = async () => {
+    if (!lostChildForm.childName || !lostChildForm.childAge || !lostChildForm.childDescription || !lostChildForm.lastSeenLocation || !lostChildForm.guardianName || !lostChildForm.guardianContact) return;
     setLostChildLoading(true);
     try {
       const res = await fetch(apiUrl('/api/emergency'), {
@@ -82,14 +83,14 @@ export function EmergencyPanel() {
       <Card className="border-fifa-red/30">
         <CardContent className="py-6">
           <div className="text-center space-y-4">
-            <div className="h-20 w-20 rounded-full bg-fifa-red/20 flex items-center justify-center mx-auto animate-pulse-gold">
+            <div className="h-20 w-20 rounded-full bg-fifa-red/20 flex items-center justify-center mx-auto animate-pulse-gold" aria-hidden="true">
               <span className="text-4xl">🚨</span>
             </div>
             <div>
               <h2 className="text-xl font-bold text-fifa-red">Emergency SOS</h2>
               <p className="text-sm text-fifa-gray mt-1">Press for immediate emergency assistance</p>
             </div>
-            <Button variant="danger" size="lg" onClick={handleSOS} loading={sosLoading} className="px-12">
+            <Button variant="danger" size="lg" onClick={handleSOS} loading={sosLoading} className="px-12" aria-label="Activate emergency SOS alert">
               ACTIVATE SOS
             </Button>
           </div>
@@ -97,8 +98,8 @@ export function EmergencyPanel() {
       </Card>
 
       {sosResult && (
-        <Card className="border-fifa-red/30 bg-fifa-red/5">
-          <CardHeader><CardTitle className="text-fifa-red">⚠️ Emergency Active</CardTitle></CardHeader>
+        <Card className="border-fifa-red/30 bg-fifa-red/5" role="alert" aria-live="assertive">
+          <CardHeader><CardTitle className="text-fifa-red">Emergency Active</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-fifa-white">{sosResult.message}</p>
             <ol className="space-y-2">
@@ -110,8 +111,8 @@ export function EmergencyPanel() {
             </ol>
             <div className="flex gap-3 pt-2">
               {sosResult.emergencyContacts?.map((c: { name: string; phone: string }) => (
-                <a key={c.phone} href={`tel:${c.phone}`} className="rounded-xl border border-fifa-red/30 px-4 py-2 text-sm text-fifa-red hover:bg-fifa-red/10 transition-all">
-                  📞 {c.name}: {c.phone}
+                <a key={c.phone} href={`tel:${c.phone}`} className="rounded-xl border border-fifa-red/30 px-4 py-2 text-sm text-fifa-red hover:bg-fifa-red/10 transition-all" aria-label={`Call ${c.name} at ${c.phone}`}>
+                  Call {c.name}: {c.phone}
                 </a>
               ))}
             </div>
@@ -123,14 +124,14 @@ export function EmergencyPanel() {
         <Card>
           <CardHeader><CardTitle>Report Incident</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap" role="group" aria-label="Incident type">
               {['medical', 'security', 'fire', 'weather'].map((type) => (
-                <Button key={type} variant={reportType === type ? 'danger' : 'secondary'} size="sm" onClick={() => setReportType(type)}>
+                <Button key={type} variant={reportType === type ? 'danger' : 'secondary'} size="sm" onClick={() => setReportType(type)} aria-pressed={reportType === type}>
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </Button>
               ))}
             </div>
-            <Input placeholder="Describe the incident..." value={reportDesc} onChange={(e) => setReportDesc(e.target.value)} />
+            <Input placeholder="Describe the incident..." aria-label="Incident description" value={reportDesc} onChange={(e) => setReportDesc(e.target.value)} />
             <Button variant="danger" onClick={handleReport} loading={reportLoading} disabled={!reportType || !reportDesc}>
               Submit Report
             </Button>
@@ -143,7 +144,7 @@ export function EmergencyPanel() {
             <p className="text-sm text-fifa-gray mb-3">Report a lost or missing child to initiate immediate search protocol.</p>
             <Button variant="danger" onClick={() => setShowLostChild(true)}>Report Lost Child</Button>
             {lostChildResult && (
-              <div className="mt-3 rounded-xl bg-fifa-green/5 border border-fifa-green/30 p-3 text-sm text-fifa-green">{lostChildResult}</div>
+              <div className="mt-3 rounded-xl bg-fifa-green/5 border border-fifa-green/30 p-3 text-sm text-fifa-green" role="status">{lostChildResult}</div>
             )}
           </CardContent>
         </Card>
@@ -151,12 +152,12 @@ export function EmergencyPanel() {
 
       <Modal isOpen={showLostChild} onClose={() => setShowLostChild(false)} title="Report Lost Child" size="md">
         <div className="space-y-3">
-          <Input placeholder="Child's name" value={lostChildForm.childName} onChange={(e) => setLostChildForm({ ...lostChildForm, childName: e.target.value })} />
-          <Input placeholder="Child's age" type="number" value={lostChildForm.childAge} onChange={(e) => setLostChildForm({ ...lostChildForm, childAge: e.target.value })} />
-          <Input placeholder="Description (clothing, appearance)" value={lostChildForm.childDescription} onChange={(e) => setLostChildForm({ ...lostChildForm, childDescription: e.target.value })} />
-          <Input placeholder="Last seen location" value={lostChildForm.lastSeenLocation} onChange={(e) => setLostChildForm({ ...lostChildForm, lastSeenLocation: e.target.value })} />
-          <Input placeholder="Guardian name" value={lostChildForm.guardianName} onChange={(e) => setLostChildForm({ ...lostChildForm, guardianName: e.target.value })} />
-          <Input placeholder="Guardian phone" value={lostChildForm.guardianContact} onChange={(e) => setLostChildForm({ ...lostChildForm, guardianContact: e.target.value })} />
+          <Input placeholder="Child's name" aria-label="Child's name" value={lostChildForm.childName} onChange={(e) => setLostChildForm({ ...lostChildForm, childName: e.target.value })} />
+          <Input placeholder="Child's age" type="number" aria-label="Child's age" value={lostChildForm.childAge} onChange={(e) => setLostChildForm({ ...lostChildForm, childAge: e.target.value })} />
+          <Input placeholder="Description (clothing, appearance)" aria-label="Child description" value={lostChildForm.childDescription} onChange={(e) => setLostChildForm({ ...lostChildForm, childDescription: e.target.value })} />
+          <Input placeholder="Last seen location" aria-label="Last seen location" value={lostChildForm.lastSeenLocation} onChange={(e) => setLostChildForm({ ...lostChildForm, lastSeenLocation: e.target.value })} />
+          <Input placeholder="Guardian name" aria-label="Guardian name" value={lostChildForm.guardianName} onChange={(e) => setLostChildForm({ ...lostChildForm, guardianName: e.target.value })} />
+          <Input placeholder="Guardian phone" aria-label="Guardian phone number" value={lostChildForm.guardianContact} onChange={(e) => setLostChildForm({ ...lostChildForm, guardianContact: e.target.value })} />
           <Button variant="danger" onClick={handleLostChild} loading={lostChildLoading} className="w-full">Submit Lost Child Report</Button>
         </div>
       </Modal>

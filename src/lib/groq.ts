@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk';
+import { GROQ_MODEL } from '@/constants';
 
 let groqClient: Groq | null = null;
 
@@ -23,7 +24,7 @@ export async function groqGenerateText(
   messages.push({ role: 'user', content: prompt });
 
   const completion = await client.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: GROQ_MODEL,
     messages,
     temperature: 0.7,
     max_tokens: 2048,
@@ -53,7 +54,7 @@ export async function groqGenerateChat(
   messages.push({ role: 'user', content: message });
 
   const completion = await client.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: GROQ_MODEL,
     messages,
     temperature: 0.7,
     max_tokens: 2048,

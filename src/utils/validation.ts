@@ -4,7 +4,7 @@ export const chatMessageSchema = z.object({
   message: z.string().min(1).max(2000).trim(),
   sessionId: z.string().uuid().optional(),
   language: z.enum(['en', 'es', 'fr', 'pt', 'ar', 'hi', 'ja', 'de', 'it', 'zh']).default('en'),
-  history: z.array(z.object({ role: z.string(), content: z.string() })).optional(),
+  history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(2000) })).max(20).optional(),
 });
 
 export const navigationRequestSchema = z.object({
@@ -20,14 +20,14 @@ export const navigationRequestSchema = z.object({
 export const emergencyReportSchema = z.object({
   type: z.enum(['medical', 'security', 'fire', 'weather', 'lost_child']),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
-  latitude: z.number(),
-  longitude: z.number(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
   description: z.string().min(10).max(1000),
 });
 
 export const sosAlertSchema = z.object({
-  latitude: z.number(),
-  longitude: z.number(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
   type: z.enum(['personal', 'medical', 'security']).default('personal'),
   message: z.string().max(500).optional(),
 });
@@ -43,6 +43,6 @@ export const volunteerTaskSchema = z.object({
   description: z.string().min(1).max(1000),
   priority: z.enum(['low', 'medium', 'high']),
   location: z.string().min(1),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/),
 });

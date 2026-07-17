@@ -8,7 +8,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    optimizePackageImports: ['@react-google-maps/api', 'framer-motion', 'date-fns'],
+    optimizePackageImports: ['framer-motion'],
   },
   headers: async () => [
     {
@@ -16,9 +16,24 @@ const nextConfig = {
       headers: [
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         { key: 'X-Frame-Options', value: 'DENY' },
-        { key: 'X-XSS-Protection', value: '1; mode=block' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       ],
+    },
+    {
+      source: '/api/sustainability',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=600' }],
+    },
+    {
+      source: '/api/transport',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=60, stale-while-revalidate=120' }],
+    },
+    {
+      source: '/api/crowd',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=10, stale-while-revalidate=30' }],
+    },
+    {
+      source: '/api/health',
+      headers: [{ key: 'Cache-Control', value: 'no-store' }],
     },
   ],
 };

@@ -5,6 +5,7 @@ import { EMERGENCY_RESPONSE_PROMPT } from '@/constants/prompts';
 import { emergencyReportSchema, sosAlertSchema } from '@/utils/validation';
 import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
 import { EMERGENCY_PHONE, MEDICAL_STATION_PHONE } from '@/constants';
+import { detectPromptInjection, sanitizeInput } from '@/utils/security';
 
 const lostChildSchema = z.object({
   action: z.literal('lost_child'),
@@ -91,7 +92,13 @@ export async function POST(request: NextRequest) {
         timestamp: Date.now(),
       };
 
-      const prompt = `A child has been reported lost at MetLife Stadium. Name: ${parsed.data.childName}, Age: ${parsed.data.childAge}, Description: ${parsed.data.childDescription}, Last seen: ${parsed.data.lastSeenLocation}. Provide immediate response protocol for lost child procedures at a major sporting venue.`;
+      const safeName = sanitizeInput(parsed.data.childName).slice(0, 100);
+      const safeDesc = sanitizeInput(parsed.data.childDescription).slice(0, 500);
+      const safeLocation = sanitizeInput(parsed.data.lastSeenLocation).slice(0, 200);
+      if (detectPromptInjection(safeName) || detectPromptInjection(safeDesc) || detectPromptInjection(safeLocation)) {
+        return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
+      }
+      const prompt = `A child has been reported lost at MetLife Stadium. Name: ${safeName}, Age: ${parsed.data.childAge}, Description: ${safeDesc}, Last seen: ${safeLocation}. Provide immediate response protocol for lost child procedures at a major sporting venue.`;
       const protocol = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
 
       return NextResponse.json({ report, protocol });
@@ -112,7 +119,11 @@ export async function POST(request: NextRequest) {
         responders: [],
       };
 
-      const prompt = `Emergency report filed: Type: ${parsed.data.type}, Severity: ${parsed.data.severity}, Description: ${parsed.data.description}. Provide initial response assessment and recommended actions.`;
+      const safeDesc = sanitizeInput(parsed.data.description).slice(0, 500);
+      if (detectPromptInjection(safeDesc)) {
+        return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
+      }
+      const prompt = `Emergency report filed: Type: ${parsed.data.type}, Severity: ${parsed.data.severity}, Description: ${safeDesc}. Provide initial response assessment and recommended actions.`;
       const assessment = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
 
       return NextResponse.json({ report, assessment });

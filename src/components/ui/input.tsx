@@ -1,4 +1,4 @@
-import { type InputHTMLAttributes, forwardRef } from 'react';
+import { type InputHTMLAttributes, forwardRef, useId } from 'react';
 import { cn } from '@/utils/cn';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -9,7 +9,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, icon, id, ...props }, ref) => {
-    const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
+    const generatedId = useId();
+    const inputId = id || generatedId;
+    const errorId = `${inputId}-error`;
     return (
       <div className="space-y-1.5">
         {label && (
@@ -19,11 +21,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <div className="relative">
           {icon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-fifa-gray">{icon}</div>
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-fifa-gray" aria-hidden="true">{icon}</div>
           )}
           <input
             ref={ref}
             id={inputId}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
             className={cn(
               'w-full rounded-xl border border-glass-border bg-white/5 px-4 py-2.5 text-fifa-white',
               'placeholder:text-fifa-gray/60',
@@ -37,7 +41,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
         </div>
-        {error && <p className="text-sm text-fifa-red">{error}</p>}
+        {error && <p id={errorId} className="text-sm text-fifa-red" role="alert">{error}</p>}
       </div>
     );
   }

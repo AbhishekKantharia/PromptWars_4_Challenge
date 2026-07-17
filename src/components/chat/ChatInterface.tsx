@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Card } from '@/components/ui/card';
-import type { ChatMessage } from '@/types';
 
 const QUICK_ACTIONS = [
   { label: 'Where is Gate 6?', icon: '🚪' },
@@ -24,7 +23,7 @@ const QUICK_ACTIONS = [
 
 export function ChatInterface() {
   const { language } = useLanguage();
-  const { preferences: _preferences } = useAccessibility();
+  const { preferences } = useAccessibility();
   const { messages, isLoading, error, sendMessage } = useChat({ language });
   const { speak, isSpeaking, stop: stopSpeaking } = useSpeech();
   const { isListening, transcript, startListening, stopListening, isSupported: sttSupported } = useSpeechRecognition(getSpeechLang(language));
@@ -101,8 +100,8 @@ export function ChatInterface() {
             </div>
           )}
 
-          {messages.map((msg: ChatMessage) => (
-            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`} role="article" aria-label={msg.role === 'user' ? 'Your message' : 'AI response'}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-fifa-blue text-fifa-white'
@@ -142,7 +141,7 @@ export function ChatInterface() {
           )}
 
           {error && (
-            <div className="flex justify-center">
+            <div className="flex justify-center" role="alert" aria-live="assertive">
               <div className="bg-fifa-red/10 border border-fifa-red/30 rounded-xl px-4 py-2 text-sm text-fifa-red">{error}</div>
             </div>
           )}

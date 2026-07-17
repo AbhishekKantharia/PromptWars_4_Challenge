@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit, getClientIdentifier } from '@/lib/rate-limiter';
 import { generateText } from '@/lib/gemini';
 import { VOLUNTEER_KB_PROMPT } from '@/constants/prompts';
+import { detectPromptInjection, sanitizeInput } from '@/utils/security';
+import { z } from 'zod';
 
 const VOLUNTEER_TASKS = [
   { id: 't-1', title: 'Gate N1 Usher', description: 'Assist fans entering through North Gate 1. Check tickets, direct to sections.', location: 'North Gate 1', priority: 'high' as const, status: 'pending' as const, startTime: '14:00', endTime: '16:00', requiredSkills: ['customer_service'] },
@@ -16,6 +18,20 @@ const VOLUNTEER_SCHEDULE = [
   { id: 's-2', date: '2026-06-14', startTime: '14:00', endTime: '20:00', area: 'Food Court', role: 'Monitor', status: 'upcoming' as const },
   { id: 's-3', date: '2026-06-16', startTime: '10:00', endTime: '23:00', area: 'South Gate', role: 'Accessibility Guide', status: 'upcoming' as const },
 ];
+
+const volunteerAskSchema = z.object({
+  action: z.literal('ask'),
+  question: z.string().min(1).max(500).trim(),
+});
+
+const volunteerReportSchema = z.object({
+  action: z.literal('report'),
+  type: z.enum(['medical', 'security', 'fire', 'weather', 'lost_child']),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  description: z.string().min(10).max(1000),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
 
 export async function GET(request: NextRequest) {
   const clientId = getClientIdentifier(request);
@@ -49,13 +65,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (body.action === 'ask') {
-      const question = body.question as string;
-      if (!question || question.trim().length === 0) {
-        return NextResponse.json({ error: 'Please provide a question' }, { status: 400 });
+      const parsed = volunteerAskSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten().fieldErrors }, { status: 400 });
+      }
+      const sanitized = sanitizeInput(parsed.data.question);
+      if (detectPromptInjection(sanitized)) {
+        return NextResponse.json({ error: 'Your message contains content that cannot be processed.' }, { status: 400 });
       }
       let answer: string;
       try {
-        answer = await generateText(question, VOLUNTEER_KB_PROMPT);
+        answer = await generateText(sanitized, VOLUNTEER_KB_PROMPT);
       } catch (error) {
         console.warn('Gemini unavailable for volunteer KB, using fallback:', error);
         answer = 'I can help with general volunteer information. Common tasks include ushering, food court monitoring, accessibility guiding, and first aid support. For specific questions, please contact your shift supervisor.';
@@ -64,10 +84,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.action === 'report') {
+      const parsed = volunteerReportSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid report data', details: parsed.error.flatten().fieldErrors }, { status: 400 });
+      }
       const report = {
         id: crypto.randomUUID(),
         reporterId: clientId,
-        ...body,
+        type: parsed.data.type,
+        severity: parsed.data.severity,
+        description: parsed.data.description,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
         timestamp: Date.now(),
         status: 'reported' as const,
       };

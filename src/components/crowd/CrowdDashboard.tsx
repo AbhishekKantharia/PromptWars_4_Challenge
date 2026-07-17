@@ -77,8 +77,9 @@ export function CrowdDashboard() {
       </div>
 
       <div className="flex items-center gap-4 px-1">
-        <label className="text-sm text-fifa-gray whitespace-nowrap">Match Progress</label>
+        <label htmlFor="match-progress" className="text-sm text-fifa-gray whitespace-nowrap">Match Progress</label>
         <input
+          id="match-progress"
           type="range" min="0" max="1" step="0.01" value={matchProgress}
           onChange={(e) => setMatchProgress(parseFloat(e.target.value))}
           className="flex-1 accent-fifa-accent"

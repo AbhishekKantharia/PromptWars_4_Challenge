@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/utils/cn';
 
@@ -20,13 +20,21 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const addToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = crypto.randomUUID();
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
+      timersRef.current.delete(id);
     }, 4000);
+    timersRef.current.set(id, timer);
+  }, []);
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => { timers.forEach((t) => clearTimeout(t)); };
   }, []);
 
   const icons: Record<ToastType, string> = {
@@ -46,7 +54,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast: addToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2" aria-live="polite">
+      <div
+        className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
@@ -54,13 +66,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               initial={{ opacity: 0, x: 50, scale: 0.95 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 50, scale: 0.95 }}
+              role={t.type === 'error' ? 'alert' : 'status'}
+              aria-live={t.type === 'error' ? 'assertive' : 'polite'}
               className={cn(
                 'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium shadow-glass backdrop-blur-xl',
                 'min-w-[280px] max-w-[400px]',
                 colors[t.type]
               )}
             >
-              <span className="text-lg">{icons[t.type]}</span>
+              <span className="text-lg" aria-hidden="true">{icons[t.type]}</span>
               {t.message}
             </motion.div>
           ))}

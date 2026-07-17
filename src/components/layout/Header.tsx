@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { LANGUAGES } from '@/constants';
 import type { Language } from '@/types';
@@ -9,8 +9,26 @@ import { cn } from '@/utils/cn';
 export function Header() {
   const { language, setLanguage } = useLanguage();
   const [langOpen, setLangOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentLang = LANGUAGES.find((l) => l.code === language);
+
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      setLangOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (langOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [langOpen, handleClickOutside]);
+
+  const handleDropdownKeydown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { setLangOpen(false); }
+  }, []);
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-glass-border bg-fifa-navy/80 backdrop-blur-xl flex items-center justify-between px-6" role="banner">
@@ -22,7 +40,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setLangOpen(!langOpen)}
             className={cn(
@@ -31,15 +49,25 @@ export function Header() {
             )}
             aria-label="Select language"
             aria-expanded={langOpen}
+            aria-haspopup="listbox"
+            aria-controls="lang-dropdown"
           >
-            <span>🌐</span>
+            <span aria-hidden="true">🌐</span>
             <span>{currentLang?.nativeName || 'English'}</span>
           </button>
           {langOpen && (
-            <div className="absolute right-0 mt-2 w-48 rounded-xl border border-glass-border bg-fifa-dark shadow-glass py-1 z-50">
+            <div
+              id="lang-dropdown"
+              role="listbox"
+              aria-label="Available languages"
+              onKeyDown={handleDropdownKeydown}
+              className="absolute right-0 mt-2 w-48 rounded-xl border border-glass-border bg-fifa-dark shadow-glass py-1 z-50"
+            >
               {LANGUAGES.map((lang) => (
                 <button
                   key={lang.code}
+                  role="option"
+                  aria-selected={language === lang.code}
                   onClick={() => { setLanguage(lang.code as Language); setLangOpen(false); }}
                   className={cn(
                     'w-full text-left px-4 py-2 text-sm transition-colors',
@@ -57,8 +85,8 @@ export function Header() {
         </div>
 
         <button className="relative rounded-xl p-2 text-fifa-silver hover:bg-white/5 transition-colors" aria-label="Notifications">
-          <span className="text-lg">🔔</span>
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-fifa-red" aria-label="Unread notification" />
+          <span className="text-lg" aria-hidden="true">🔔</span>
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-fifa-red" aria-hidden="true" />
         </button>
 
         <button className="h-8 w-8 rounded-full bg-fifa-blue flex items-center justify-center text-sm font-semibold text-fifa-white" aria-label="User profile">

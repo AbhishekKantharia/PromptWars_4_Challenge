@@ -17,6 +17,9 @@ export const VENUES = [
   { id: 'lincoln', name: 'Lincoln Financial Field', city: 'Philadelphia', capacity: 69176 },
   { id: 'bmo', name: 'BMO Field', city: 'Toronto', capacity: 30000 },
   { id: 'estadio-azteca', name: 'Estadio Azteca', city: 'Mexico City', capacity: 87000 },
+  { id: 'estadio-bbva', name: 'Estadio BBVA', city: 'Monterrey', capacity: 53500 },
+  { id: 'mercedes-benz', name: 'Mercedes-Benz Stadium', city: 'Atlanta', capacity: 71000 },
+  { id: 'bc-place', name: 'BC Place', city: 'Vancouver', capacity: 54500 },
 ] as const;
 
 export const LANGUAGES: { code: Language; name: string; nativeName: string; dir: 'ltr' | 'rtl' }[] = [
@@ -46,6 +49,7 @@ export const MEDICAL_STATION_PHONE = '+1-800-FIFA-MED';
 
 export const GEMINI_MODEL = 'gemini-2.0-flash';
 export const GEMINI_EMBEDDING_MODEL = 'text-embedding-004';
+export const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 export const RATE_LIMIT = {
   chat: { maxRequests: 30, windowMs: 60000 },
