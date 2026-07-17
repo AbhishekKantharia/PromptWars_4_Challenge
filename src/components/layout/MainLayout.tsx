@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { AccessibilityProvider } from '@/contexts/AccessibilityContext';
@@ -10,7 +10,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { cn } from '@/utils/cn';
 
 export function MainLayout({ children }: { children: ReactNode }) {
-  const [sidebarCollapsed] = useState(false);
+  const sidebarCollapsed = false;
 
   return (
     <AccessibilityProvider>

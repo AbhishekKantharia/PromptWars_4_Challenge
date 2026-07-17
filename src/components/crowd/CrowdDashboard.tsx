@@ -102,7 +102,7 @@ export function CrowdDashboard() {
                       <Badge variant={DENSITY_BADGE[zone.densityLevel] || 'default'}>{zone.densityLevel}</Badge>
                     </div>
                   </div>
-                  <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${zone.name} occupancy: ${pct}%`}>
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         pct > 80 ? 'bg-fifa-red' : pct > 60 ? 'bg-yellow-500' : pct > 40 ? 'bg-fifa-accent' : 'bg-fifa-green'

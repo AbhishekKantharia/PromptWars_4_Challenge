@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useAccessibility } from '@/contexts/AccessibilityContext';
 import { useSpeech } from '@/hooks/useSpeech';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { getSpeechLang } from '@/contexts/LanguageContext';
@@ -23,7 +22,6 @@ const QUICK_ACTIONS = [
 
 export function ChatInterface() {
   const { language } = useLanguage();
-  useAccessibility();
   const { messages, isLoading, error, sendMessage } = useChat({ language });
   const { speak, isSpeaking, stop: stopSpeaking } = useSpeech();
   const { isListening, transcript, startListening, stopListening, isSupported: sttSupported } = useSpeechRecognition(getSpeechLang(language));

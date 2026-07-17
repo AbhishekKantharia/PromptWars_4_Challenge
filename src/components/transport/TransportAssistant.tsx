@@ -60,16 +60,16 @@ export function TransportAssistant() {
         </Card>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2" role="tablist" aria-label="Transport type">
         {TABS.map((tab) => (
-          <Button key={tab} variant={activeTab === tab ? 'gold' : 'secondary'} size="sm" onClick={() => setActiveTab(tab)}>
+          <Button key={tab} variant={activeTab === tab ? 'gold' : 'secondary'} size="sm" role="tab" aria-selected={activeTab === tab} aria-controls={`panel-${tab}`} onClick={() => setActiveTab(tab)}>
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </Button>
         ))}
       </div>
 
       {activeTab === 'metro' && (
-        <Card><CardHeader><CardTitle>Metro / Rail</CardTitle></CardHeader><CardContent>
+        <div id="panel-metro" role="tabpanel"><Card><CardHeader><CardTitle>Metro / Rail</CardTitle></CardHeader><CardContent>
           <div className="space-y-3">
             {data.metro.map((m) => (
               <div key={m.id} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
@@ -81,11 +81,11 @@ export function TransportAssistant() {
               </div>
             ))}
           </div>
-        </CardContent></Card>
+        </CardContent></Card></div>
       )}
 
       {activeTab === 'bus' && (
-        <Card><CardHeader><CardTitle>Bus Services</CardTitle></CardHeader><CardContent>
+        <div id="panel-bus" role="tabpanel"><Card><CardHeader><CardTitle>Bus Services</CardTitle></CardHeader><CardContent>
           <div className="space-y-3">
             {data.bus.map((b) => (
               <div key={b.id} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
@@ -94,11 +94,11 @@ export function TransportAssistant() {
               </div>
             ))}
           </div>
-        </CardContent></Card>
+        </CardContent></Card></div>
       )}
 
       {activeTab === 'parking' && (
-        <Card><CardHeader><CardTitle>Parking</CardTitle></CardHeader><CardContent>
+        <div id="panel-parking" role="tabpanel"><Card><CardHeader><CardTitle>Parking</CardTitle></CardHeader><CardContent>
           <div className="space-y-3">
             {data.parking.map((p) => (
               <div key={p.id} className="flex items-center justify-between rounded-xl border border-glass-border bg-white/5 px-4 py-3">
@@ -114,7 +114,7 @@ export function TransportAssistant() {
               </div>
             ))}
           </div>
-        </CardContent></Card>
+        </CardContent></Card></div>
       )}
 
       {aiRec && (

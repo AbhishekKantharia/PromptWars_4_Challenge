@@ -48,7 +48,7 @@ export function VolunteerAssistant() {
         <CardHeader><CardTitle>Ask the Volunteer AI</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-2">
-            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g., What is the procedure for a medical emergency?" onKeyDown={(e) => e.key === 'Enter' && handleAsk()} />
+            <Input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g., What is the procedure for a medical emergency?" aria-label="Volunteer question" onKeyDown={(e) => e.key === 'Enter' && handleAsk()} />
             <Button variant="gold" onClick={handleAsk} loading={askLoading}>Ask</Button>
           </div>
           {aiAnswer && (
