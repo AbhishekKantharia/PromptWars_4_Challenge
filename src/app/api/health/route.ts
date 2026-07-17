@@ -7,6 +7,7 @@ export async function GET() {
     timestamp: Date.now(),
     services: {
       gemini: !!process.env.GEMINI_API_KEY,
+      groq: !!process.env.GROQ_API_KEY,
       firebase: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       maps: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     },
