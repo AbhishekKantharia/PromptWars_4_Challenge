@@ -36,6 +36,19 @@ const LANG_NAMES: Record<Language, string> = {
 
 const TEMPLATES: TemplateMatch[] = [
   {
+    patterns: [/weather|rain|cold|hot|temperature|sunny|wind|storm|forecast/i],
+    handler: (_m, ctx) => {
+      if (!ctx.weather) return 'Weather data is currently unavailable. Please check your local forecast.';
+      const impact = getWeatherImpact(ctx.weather);
+      let response = `Current weather at ${ctx.venue.name}: ${ctx.weather.condition}, ${Math.round(ctx.weather.temperature)} degrees Celsius, humidity ${ctx.weather.humidity}%, wind ${Math.round(ctx.weather.windSpeed)} km/h.`;
+      if (impact.safetyNotes.length > 0) {
+        response += ` Important notes: ${impact.safetyNotes.join('. ')}.`;
+      }
+      response += ` Crowd impact: ${impact.crowdImpact}. Transport impact: ${impact.transportImpact}.`;
+      return response;
+    },
+  },
+  {
     patterns: [/gate\s*(\w+)/i, /entrance\s*(\w*)/i, /where.*gate/i, /find.*gate/i, /gate\s*(north|south|east|west|a|b|c|d|e|f)/i],
     handler: (_m, ctx) => {
       const gate = _m[1] || 'your nearest';
@@ -50,11 +63,11 @@ const TEMPLATES: TemplateMatch[] = [
     },
   },
   {
-    patterns: [/food|eat|restaurant|concession|hungry|snack|drink|beer|water/i],
+    patterns: [/food|eat|restaurant|concession|hungry|snack|dining|menu|pizza|burger|hotdog|nachos/i],
     handler: (_m, ctx) => {
       const temp = ctx.weather?.temperature;
       const hot = temp && temp > 30 ? ' Given the warm weather, cold drinks and ice cream are available at most stands.' : '';
-      return `Food and beverage options at ${ctx.venue.name} include multiple concession stands on every concourse level. You can find burgers, hot dogs, pizza, nachos, and local specialties. Water and non-alcoholic drinks are available throughout. Alcohol is served at designated areas with a 2-drink maximum per purchase.${hot} Check the interactive map for the nearest food court.`;
+      return `Food and beverage options at ${ctx.venue.name} include multiple concession stands on every concourse level. You can find burgers, hot dogs, pizza, nachos, and local specialties. Bottled water and non-alcoholic drinks are available throughout. Alcohol is served at designated areas with a 2-drink maximum per purchase.${hot} Check the interactive map for the nearest food court.`;
     },
   },
   {
@@ -86,19 +99,6 @@ const TEMPLATES: TemplateMatch[] = [
     patterns: [/wheelchair|accessib|disab|elevator|lift|ramp|special.*need/i],
     handler: (_m, ctx) => {
       return `${ctx.venue.name} is fully accessible. Wheelchair viewing areas are available in all sections. Elevators are located at the north and south ends of the stadium. Accessible entrances have ramp access. Companion seats are available next to wheelchair spaces. If you need assistance, ask any staff member or check the Accessibility tab for detailed information about accessible routes and services.`;
-    },
-  },
-  {
-    patterns: [/weather|rain|cold|hot|temperature|sun|wind/i],
-    handler: (_m, ctx) => {
-      if (!ctx.weather) return 'Weather data is currently unavailable. Please check your local forecast.';
-      const impact = getWeatherImpact(ctx.weather);
-      let response = `Current weather at ${ctx.venue.name}: ${ctx.weather.condition}, ${Math.round(ctx.weather.temperature)} degrees Celsius, humidity ${ctx.weather.humidity}%, wind ${Math.round(ctx.weather.windSpeed)} km/h.`;
-      if (impact.safetyNotes.length > 0) {
-        response += ` Important notes: ${impact.safetyNotes.join('. ')}.`;
-      }
-      response += ` Crowd impact: ${impact.crowdImpact}. Transport impact: ${impact.transportImpact}.`;
-      return response;
     },
   },
   {
