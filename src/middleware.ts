@@ -34,9 +34,17 @@ export function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    response.headers.set('Access-Control-Allow-Origin', origin || '*');
+    let matchedOrigin = allowedOrigins.find(o => o === origin);
+    if (!matchedOrigin && origin?.endsWith('.vercel.app')) {
+      matchedOrigin = origin;
+    }
+    if (!matchedOrigin) {
+      matchedOrigin = allowedOrigins[1]; // fallback to https://${host}
+    }
+    response.headers.set('Access-Control-Allow-Origin', matchedOrigin);
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
   }
 
   return response;

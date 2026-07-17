@@ -23,7 +23,7 @@ const QUICK_ACTIONS = [
 
 export function ChatInterface() {
   const { language } = useLanguage();
-  const { preferences } = useAccessibility();
+  useAccessibility();
   const { messages, isLoading, error, sendMessage } = useChat({ language });
   const { speak, isSpeaking, stop: stopSpeaking } = useSpeech();
   const { isListening, transcript, startListening, stopListening, isSupported: sttSupported } = useSpeechRecognition(getSpeechLang(language));

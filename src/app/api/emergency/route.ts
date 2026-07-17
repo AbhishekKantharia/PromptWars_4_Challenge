@@ -85,19 +85,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Please provide complete information about the child' }, { status: 400 });
       }
 
-      const report = {
-        id: crypto.randomUUID(),
-        ...parsed.data,
-        status: 'active' as const,
-        timestamp: Date.now(),
-      };
-
       const safeName = sanitizeInput(parsed.data.childName).slice(0, 100);
       const safeDesc = sanitizeInput(parsed.data.childDescription).slice(0, 500);
       const safeLocation = sanitizeInput(parsed.data.lastSeenLocation).slice(0, 200);
+      const safeGuardian = sanitizeInput(parsed.data.guardianName).slice(0, 100);
+      const safeContact = sanitizeInput(parsed.data.guardianContact).slice(0, 50);
       if (detectPromptInjection(safeName) || detectPromptInjection(safeDesc) || detectPromptInjection(safeLocation)) {
         return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
       }
+
+      const report = {
+        id: crypto.randomUUID(),
+        action: 'lost_child' as const,
+        childName: safeName,
+        childAge: parsed.data.childAge,
+        childDescription: safeDesc,
+        lastSeenLocation: safeLocation,
+        guardianName: safeGuardian,
+        guardianContact: safeContact,
+        status: 'active' as const,
+        timestamp: Date.now(),
+      };
       const prompt = `A child has been reported lost at MetLife Stadium. Name: ${safeName}, Age: ${parsed.data.childAge}, Description: ${safeDesc}, Last seen: ${safeLocation}. Provide immediate response protocol for lost child procedures at a major sporting venue.`;
       const protocol = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
 
@@ -110,19 +118,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid report data' }, { status: 400 });
       }
 
+      const safeDesc = sanitizeInput(parsed.data.description).slice(0, 500);
+      if (detectPromptInjection(safeDesc)) {
+        return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
+      }
+
       const report = {
         id: crypto.randomUUID(),
-        ...parsed.data,
+        type: parsed.data.type,
+        severity: parsed.data.severity,
+        description: safeDesc,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
         reportedBy: clientId,
         timestamp: Date.now(),
         status: 'reported' as const,
         responders: [],
       };
-
-      const safeDesc = sanitizeInput(parsed.data.description).slice(0, 500);
-      if (detectPromptInjection(safeDesc)) {
-        return NextResponse.json({ error: 'Input contains invalid content.' }, { status: 400 });
-      }
       const prompt = `Emergency report filed: Type: ${parsed.data.type}, Severity: ${parsed.data.severity}, Description: ${safeDesc}. Provide initial response assessment and recommended actions.`;
       const assessment = await generateText(prompt, EMERGENCY_RESPONSE_PROMPT);
 

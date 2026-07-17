@@ -88,12 +88,16 @@ export async function POST(request: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: 'Invalid report data', details: parsed.error.flatten().fieldErrors }, { status: 400 });
       }
+      const sanitizedDesc = sanitizeInput(parsed.data.description).slice(0, 1000);
+      if (detectPromptInjection(sanitizedDesc)) {
+        return NextResponse.json({ error: 'Your report contains content that cannot be processed.' }, { status: 400 });
+      }
       const report = {
         id: crypto.randomUUID(),
         reporterId: clientId,
         type: parsed.data.type,
         severity: parsed.data.severity,
-        description: parsed.data.description,
+        description: sanitizedDesc,
         latitude: parsed.data.latitude,
         longitude: parsed.data.longitude,
         timestamp: Date.now(),
